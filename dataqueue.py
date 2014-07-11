@@ -10,6 +10,11 @@ To tell if two records are identical, we check equality of ALL three of:
    checksum
    full file name
    file size
+
+TODO:
+- regularly tell Redis to save to disk
+- setup as daemon
+- trap for everything bad and do something good
 '''
 
 import os, sys, string, argparse, logging
@@ -19,6 +24,7 @@ import redis
 
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
+ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
 
 def echo(rec, probFail = 0.05):
     print 'Processing file: %s' % rec['filename']
@@ -26,6 +32,7 @@ def echo(rec, probFail = 0.05):
     return random.random() > probFail
 
 
+# !!! Temp config.  Will move external later. (ConfigParser)
 cfg = dict(
     action = echo,
     )
@@ -89,19 +96,24 @@ def loadQueue(r, infile, clear):
     print 'Issued %d warnings'%warnings
     
         
-def processQueue(r): 
+def processQueue(r, maxErrPer=3): 
+    errorCnt = 0
     print 'Process Queue'
     while r.llen(aq) > 0:
         rid = r.rpop(aq)
         rec = r.hgetall(rid)
         success = cfg['action'](rec)
         if not success:
-            logging.error(': Could not run action (%s) on record (%s)',
-                          cfg['action'], rec)
-            r.rpush(aq,rid)
+            errorCnt += 1
+            cnt = r.hincrby(ecnt,rid)
+            if cnt > maxErrPer:
+                r.lpush(iq,rid)  # kept failing: move to Inactive queue
+                continue
 
-    
-        
+            logging.error(': Failed to run action (%s) on record (%s) %d times',
+                          cfg['action'], rec,cnt)
+            r.lpush(aq,rid) # failed: got to the end of the line
+
         
 
 
