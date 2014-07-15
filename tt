@@ -1,0 +1,7 @@
+
+#! ./dataqueue.py --clear q1.dat  
+#! ./dataqueue.py q2.dat  # => "Issued 2 warnings"
+
+./dataqueue.py --clear --loadOnly q1.dat  
+./dataqueue.py q2.dat  --loadOnly
+./dataqueue.py null.dat 

@@ -1,7 +1,8 @@
 #! /usr/bin/env python
-'''\
-Process records of incoming data files, apply various actions on pop,
-be resilient.
+'''\ 
+
+Get data record from socket and push to queue. Pop and apply
+action. Be resilient.
 
 The checksum provided for each data record is used as an ID.  If the
 checksum of two records is the same, we assume the data is. So we can
@@ -22,6 +23,7 @@ import os, sys, string, argparse, logging
 from pprint import pprint 
 import random
 import redis
+import SocketServer
 
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
@@ -40,39 +42,32 @@ cfg = dict(
     )
 
 
-def listAQ(r, msg='DBG'):
-    print('~'*60)
-    print('%s; ACTIVE QUEUE (%s):'  % (msg,r.llen(aq)))
-    for rid in r.lrange(aq,0,-1):
-        rec = r.hgetall(rid)
-        #! print '%s: %s'%(rid,rec)
-        print('%s: %s'%(rid,rec['filename']))
 
-    
+class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
 
-def loadQueue(r, infile, clear):
-    lut = dict() # lut[rid] => dict(filename,checksum,size,prio)
-    warnings = 0
-    
-    if clear:
-        r.flushall() # overkill !!!
+    def handle0(self):
+        # self.rfile is a file-like object created by the handler;
+        # we can now use e.g. readline() instead of raw recv() calls
+        self.data = self.rfile.readline().strip()
+        print "{} wrote:".format(self.client_address[0])
+        print self.data
+        # Likewise, self.wfile is a file-like object used to write back
+        # to the client
+        self.wfile.write(self.data.upper())
 
-    listAQ(r, msg='Before Reading') # DBG
-
-    # stuff local structures from DB
-    ids = r.lrange(aq,0,-1)
-    activeIds = set(ids)
-    for rid in ids:
-        lut[rid] = r.hgetall(rid)
-
-    for line in infile:
-        prio = 0
-        (fname,checksum,size) = line.strip().split()
+    def handle(self):
+        r = self.server.r
+        activeIds = self.server.activeIds
+        lut = self.server.lut
+        print 'server.r=',r
+        self.data = self.rfile.readline().strip()
+        
+        (fname,checksum,size) = self.data.split() #! specific to our APP
         if checksum in activeIds:
             logging.warning(': Record for %s is already in queue.' 
                             +' Ignoring duplicate.', checksum)
             warnings += 1
-            continue
+            return False
                 
         activeIds.add(checksum)
         rec = dict(list(zip(['filename','size'],[fname,int(size)])))
@@ -82,12 +77,15 @@ def loadQueue(r, infile, clear):
         r.lpush(aq,checksum)
         r.hmset(checksum,rec)
 
-    # DBG
-    listAQ(r, msg='After Reading')
-    print('Issued %d warnings'%warnings)
+        print("{} wrote:".format(self.client_address[0]))
+        print(self.data)
+        self.wfile.write(self.data.upper())
+
     
         
-def processQueue(r, maxErrPer=3): 
+def processQueue(maxErrPer=3): 
+    r = redis.StrictRedis()
+
     errorCnt = 0
     print('Process Queue')
     while r.llen(aq) > 0:
@@ -124,36 +122,22 @@ def main_tt():
 def main():
     print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        version='1.0.1',
-        description='My shiny new python program',
-        epilog='EXAMPLE: %(prog)s a b"'
+        version='1.0.2',
+        description='Data Queue service',
+        epilog='EXAMPLE: %(prog)s [--host localhost] [--port 9988]"'
         )
-    parser.add_argument('infile',  help='Input file',
-                        type=argparse.FileType('r') )
-    #!parser.add_argument('outfile', help='Output output',
-    #!                    type=argparse.FileType('w') )
-    parser.add_argument('--clear',  help='Delete content of queue first',
-                        action='store_true' )
-    parser.add_argument('--loadOnly',  help='Do not process queue',
-                        action='store_true' )
 
-    parser.add_argument('-q', '--quality', help='Processing quality',
-                        choices=['low','medium','high'], default='high')
+    parser.add_argument('--host',  help='Host to bind to',
+                        default='localhost')
+    parser.add_argument('--port',  help='Port to bind to',
+                        type=int, default=9988)
+
+
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
                         choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
                         default='WARNING',
                         )
     args = parser.parse_args()
-    #!args.outfile.close()
-    #!args.outfile = args.outfile.name
-
-    #!print 'My args=',args
-    #!print 'infile=',args.infile
-
-    #!validateQuality(parser, args.quality)
-    #!if not os.path.isfile(args.infile):
-    #!    parser.error('Cannot find input NTF "%s""'%(args.infile,))
-
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -162,12 +146,26 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
-    logging.debug('Debug output is enabled by nitfConvert!!!')
+    logging.debug('Debug output is enabled by dataq_svc!!!')
 
+
+    # Create the server, binding to HOST on PORT
+    server = SocketServer.TCPServer((args.host, args.port),
+                                    DataRecordTCPHandler)
+    # stuff local structures from DB
     r = redis.StrictRedis()
-    loadQueue(r, args.infile, args.clear)
-    if not args.loadOnly:
-        processQueue(r)
+    activeIds = set(r.lrange(aq,0,-1))
+    lut = dict() # lut[rid] => dict(filename,checksum,size)
+    for rid in activeIds:
+        lut[rid] = r.hgetall(rid)
+    server.r = r
+    server.lut = lut
+    server.activeIds = activeIds
+
+
+    # Activate the server; this will keep running until you
+    # interrupt the program with Ctrl-C
+    server.serve_forever()
 
 if __name__ == '__main__':
     main()

@@ -1,43 +1,15 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 '''\
-Process records of incoming data files, apply various actions on pop,
-be resilient.
-
-The checksum provided for each data record is used as an ID.  If the
-checksum of two records is the same, we assume the data is. So we can
-throw one of them away.
-
-To tell if two records are identical, we check equality of ALL three of: 
-   checksum
-   full file name
-   file size
-
-TODO:
-- regularly tell Redis to save to disk
-- setup as daemon
-- trap for everything bad and do something good
+Modify the data queue (managed by: dataq_svc.py)
 '''
 
 import os, sys, string, argparse, logging
 from pprint import pprint 
-import random
 import redis
 
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
 ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
-
-def echo(rec, probFail = 0.10):
-    print('Processing file: %s' % rec['filename'])
-    # !!! randomize success to simulate errors on cmds
-    return random.random() > probFail
-
-
-# !!! Temp config.  Will move external later. (ConfigParser)
-cfg = dict(
-    actionName = 'echo',
-    action = echo,
-    )
 
 
 def listAQ(r, msg='DBG'):
@@ -128,17 +100,31 @@ def main():
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'
         )
-    parser.add_argument('infile',  help='Input file',
+    parser.add_argument('--load', 
+                        help='File of data records to load into queue',
                         type=argparse.FileType('r') )
-    #!parser.add_argument('outfile', help='Output output',
-    #!                    type=argparse.FileType('w') )
-    parser.add_argument('--clear',  help='Delete content of queue first',
-                        action='store_true' )
-    parser.add_argument('--loadOnly',  help='Do not process queue',
+    parser.add_argument('--dump', help='Dump copy of queue into this file',
+                        type=argparse.FileType('w') )
+    parser.add_argument('--clear',  help='Delete content of queue',
                         action='store_true' )
 
-    parser.add_argument('-q', '--quality', help='Processing quality',
-                        choices=['low','medium','high'], default='high')
+    parser.add_argument('--suspend',  
+                        help='Turn off running actions against queue records'
+                        +' and push records from socket onto queue.',
+                        action='store_true' )
+    parser.add_argument('--continue',  help='Push records from socket onto'
+                        +' queue and run actions against records popped from'
+                        +' queue (undo SUSPEND).',
+                        action='store_true' )
+    parser.add_argument('--list',  help='List current of queue',
+                        action='store_true' )
+    parser.add_argument('--advance',  help='Move records to end of queue.',
+                        action='store_true' )
+    parser.add_argument('--deactivate',  help='Move records to INACTIVE',
+                        action='store_true' )
+    parser.add_argument('--activate',  help='Move records to ACTIVE',
+                        action='store_true' )
+
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
                         choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
                         default='WARNING',
@@ -165,9 +151,10 @@ def main():
     logging.debug('Debug output is enabled by nitfConvert!!!')
 
     r = redis.StrictRedis()
-    loadQueue(r, args.infile, args.clear)
-    if not args.loadOnly:
-        processQueue(r)
+    if args.load:
+        loadQueue(r, args.load)
+    if args.clear:
+        
 
 if __name__ == '__main__':
     main()

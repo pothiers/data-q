@@ -10,8 +10,8 @@ import os, sys, string, argparse, logging
 from pprint import pprint 
 import socket
 
-def feedFile(infile, host, port):
-    data = 'this is it';
+def dummyClient(host,port):
+    data = "This is it"
     # Create a socket (SOCK_STREAM means a TCP socket)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -27,6 +27,29 @@ def feedFile(infile, host, port):
 
     print "Sent:     {}".format(data)
     print "Received: {}".format(received)
+
+def feedFile(infile, host, port):
+
+    for line in infile:
+        data = line.strip()
+        print "Sending:     {}".format(data)
+
+        # Create a socket (SOCK_STREAM means a TCP socket)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            # Connect to server and send data
+            sock.connect((host, port))
+            sock.sendall(data+'\n')
+
+            # Receive data from the server
+            received = sock.recv(1024)
+        finally:
+            # ... and shut down
+            sock.close()
+
+        print "Received: {}".format(received)
+
 
 
 ##############################################################################
@@ -70,6 +93,7 @@ def main():
     logging.debug('Debug output is enabled by test_feeder !!!')
 
 
+    #!dummyClient(args.host, args.port)
     feedFile(args.infile, args.host, args.port)
 
 if __name__ == '__main__':
