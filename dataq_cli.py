@@ -37,7 +37,7 @@ def list_queue(r,which):
         q = iq
 
     id_list = r.lrange(q,0,-1)
-    print('ACTIVE QUEUE (%s):'  % (len(id_list),))
+    print('%s QUEUE (%s):'  % (which, len(id_list)))
     for rid in id_list:
         rec = r.hgetall(rid)
         print '%s: %s'%(rid,rec)
@@ -88,27 +88,50 @@ def load_queue(r, infile):
     
     
 def advance_range(r,first,last):
+    '''Move range of records incluing FIRST and LAST id from where
+    ever they are on the queue to the tail (they will become next to
+    pop)'''
     ids = r.lrange(aq,0,-1)
-    print 'first=%s, last=%s'%(first,last)
-
     selected = ids[ids.index(first):ids.index(last)+1]
     print 'Selected records = ',selected
    
     for rid in selected:
         r.lrem(aq,0,rid)
-        # rpush doesn't seem to work with multi values
-        for sid in selected:
-            r.rpush(aq,sid)
+        # rpush doesn't seem to work with multi values so I can't do
+        # all SELECTED at once.
+        r.rpush(aq,rid)
     
-    print 'Advanced %d records to next in line'%(len(selected),)
+    print 'Advanced %d records to next in line' % (len(selected),)
+
+def deactivate_range(r,first,last):
+    '''Move range of records incluing FIRST and LAST id from where
+    they are on the active queue to the head of INACTIVE queue.'''
+    ids = r.lrange(aq,0,-1)
+    selected = ids[ids.index(first):ids.index(last)+1]
+    print 'Selected records = ',selected
+   
+    for rid in selected:
+        r.lrem(aq,0,rid)
+        r.lpush(iq,rid)
+    
+    print 'Deactivated %d records' % (len(selected),)
+
+def activate_range(r,first,last):
+    '''Move range of records incluing FIRST and LAST id from where
+    they are on the INACTIVE queue to the tail of ACTIVE queue.'''
+    ids = r.lrange(iq,0,-1)
+    selected = ids[ids.index(first):ids.index(last)+1]
+
+    print 'Selected records = ',selected
+   
+    for rid in selected:
+        r.lrem(iq,0,rid)
+        r.rpush(aq,rid)
+
+    print 'Activated %d records' % (len(selected),)
+
 
 ##############################################################################
-
-def main_tt():
-    cmd = 'MyProgram.py foo1 foo2'
-    sys.argv = cmd.split()
-    res = main()
-    return res
 
 
 def main():
@@ -149,9 +172,9 @@ def main():
                         nargs=2 )
 
     parser.add_argument('--deactivate',  help='Move records to INACTIVE',
-                        action='store_true' )
+                        nargs=2 )
     parser.add_argument('--activate',  help='Move records to ACTIVE',
-                        action='store_true' )
+                        nargs=2 )
 
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
                         choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
@@ -200,6 +223,12 @@ def main():
     
     if args.advance:
         advance_range(r, args.advance[0], args.advance[1])
+
+    if args.deactivate:
+        deactivate_range(r, args.deactivate[0], args.deactivate[1])
+
+    if args.activate:
+        activate_range(r, args.activate[0], args.activate[1])
         
     if args.summary:
         summary(r)
