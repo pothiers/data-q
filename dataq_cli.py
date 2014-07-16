@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 '''\
 Modify the data queue (managed by: dataq_svc.py)
 '''
@@ -10,9 +10,27 @@ import redis
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
 ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
+actionP = 'actionFlag' # on|off
+readP = 'readFlag' # on|off
 
 
-def listAQ(r, msg='DBG'):
+def summary(r):
+    prms = dict(
+        lenActive = r.llen(aq),
+        lenInactive = r.llen(iq),
+        actionP = r.get(actionP),
+        actionPkey = actionP,
+        readP = r.get(readP),
+        readPkey = readP,
+        )
+    print '''
+Active queue length:   %(lenActive)d
+Inactive queue length: %(lenInactive)d
+ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
+Socket READ enabled:   %(readP)s [%(readPkey)s]
+''' % prms
+
+def listActiveQ(r, msg='DBG'):
     print('~'*60)
     print('%s; ACTIVE QUEUE (%s):'  % (msg,r.llen(aq)))
     for rid in r.lrange(aq,0,-1):
@@ -29,7 +47,7 @@ def loadQueue(r, infile, clear):
     if clear:
         r.flushall() # overkill !!!
 
-    listAQ(r, msg='Before Reading') # DBG
+    listActiveQ(r, msg='Before Reading') # DBG
 
     # stuff local structures from DB
     ids = r.lrange(aq,0,-1)
@@ -55,7 +73,7 @@ def loadQueue(r, infile, clear):
         r.hmset(checksum,rec)
 
     # DBG
-    listAQ(r, msg='After Reading')
+    listActiveQ(r, msg='After Reading')
     print('Issued %d warnings'%warnings)
     
         
@@ -93,6 +111,7 @@ def main_tt():
     res = main()
     return res
 
+
 def main():
     print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
@@ -100,6 +119,26 @@ def main():
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'
         )
+    parser.add_argument('--host',  help='Host to bind to',
+                        default='localhost')
+    parser.add_argument('--port',  help='Port to bind to',
+                        type=int, default=9988)
+    parser.add_argument('--summary',  help='Show summary of queue contents.',
+                        action='store_true' )
+    parser.add_argument('--list',  help='List current of queue',
+                        action='store_true' )
+
+    parser.add_argument('--action',  
+                        help='Turn on/off running actions on queue records.',
+                        default=None,
+                        choices=['on','off'],
+                        )
+    parser.add_argument('--read',  
+                        help='Turn on/off reading socket and pushing to queue.',
+                        default=None,
+                        choices=['on','off'],
+                        )
+
     parser.add_argument('--load', 
                         help='File of data records to load into queue',
                         type=argparse.FileType('r') )
@@ -108,15 +147,9 @@ def main():
     parser.add_argument('--clear',  help='Delete content of queue',
                         action='store_true' )
 
-    parser.add_argument('--suspend',  
-                        help='Turn off running actions against queue records'
-                        +' and push records from socket onto queue.',
-                        action='store_true' )
     parser.add_argument('--continue',  help='Push records from socket onto'
                         +' queue and run actions against records popped from'
                         +' queue (undo SUSPEND).',
-                        action='store_true' )
-    parser.add_argument('--list',  help='List current of queue',
                         action='store_true' )
     parser.add_argument('--advance',  help='Move records to end of queue.',
                         action='store_true' )
@@ -151,10 +184,22 @@ def main():
     logging.debug('Debug output is enabled by nitfConvert!!!')
 
     r = redis.StrictRedis()
+    if args.action is not None:
+        r.set(actionP,args.action)
+    if args.read is not None:
+        r.set(readP,args.read)
+    if args.summary:
+        summary(r)
+    if args.list:
+        listActiveQ(r)
+        
+
     if args.load:
         loadQueue(r, args.load)
     if args.clear:
-        
+        pass
+
+    r.bgsave()
 
 if __name__ == '__main__':
     main()

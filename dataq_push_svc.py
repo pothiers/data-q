@@ -1,17 +1,10 @@
 #! /usr/bin/env python
 '''\ 
-
-Get data record from socket and push to queue. Pop and apply
-action. Be resilient.
+Read data records from socket and push to queue. 
 
 The checksum provided for each data record is used as an ID.  If the
 checksum of two records is the same, we assume the data is. So we can
 throw one of them away.
-
-To tell if two records are identical, we check equality of ALL three of: 
-   checksum
-   full file name
-   file size
 
 TODO:
 - regularly tell Redis to save to disk
@@ -20,7 +13,6 @@ TODO:
 '''
 
 import os, sys, string, argparse, logging
-from pprint import pprint 
 import random
 import redis
 import SocketServer
@@ -31,69 +23,16 @@ ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
 actionP = 'actionFlag' # on|off
 readP = 'readFlag' # on|off
 
-def echo(rec, probFail = 0.10):
-    print('Processing file: %s' % rec['filename'])
-    # !!! randomize success to simulate errors on cmds
-    return random.random() > probFail
-
-
-# !!! Temp config.  Will move external later. (ConfigParser)
-cfg = dict(
-    actionName = 'echo',
-    action = echo,
-    )
-
-
-def processQueue(maxErrPer=3): 
-    r = redis.StrictRedis()
-
-    errorCnt = 0
-    print('Process Queue')
-    while r.llen(aq) > 0:
-        rid = r.rpop(aq)
-        rec = r.hgetall(rid)
-        success = cfg['action'](rec)
-        if success:
-            print('Action ran successfully against:',rec)            
-        else:
-            errorCnt += 1
-            cnt = r.hincrby(ecnt,rid)
-            if cnt > maxErrPer:
-                r.lpush(iq,rid)  # kept failing: move to Inactive queue
-                logging.warning(
-                    ': Failed to run action "%s" on record (%s) %d times.'
-                    +' Moving it to the Inactive queue',
-                    cfg['actionName'], rec,cnt)
-
-                continue
-
-            logging.error(': Failed to run action "%s" on record (%s) %d times',
-                          cfg['actionName'], rec,cnt)
-            r.lpush(aq,rid) # failed: got to the end of the line
-
-
 class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
-
-    def handle0(self):
-        # self.rfile is a file-like object created by the handler;
-        # we can now use e.g. readline() instead of raw recv() calls
-        self.data = self.rfile.readline().strip()
-        print "{} wrote:".format(self.client_address[0])
-        print self.data
-        # Likewise, self.wfile is a file-like object used to write back
-        # to the client
-        self.wfile.write(self.data.upper())
 
     def handle(self):
         r = self.server.r
-        print('handler called')
 
         if r.get(readP) == 'off':
             return False
 
         activeIds = self.server.activeIds
         lut = self.server.lut
-        print 'server.r=',r
         self.data = self.rfile.readline().strip()
         
         (fname,checksum,size) = self.data.split() #! specific to our APP
@@ -113,28 +52,17 @@ class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
             print(self.data)
             self.wfile.write(self.data.upper())
 
-        processQueue()
-
-            
-    
         
 
         
 
 
 ##############################################################################
-
-def main_tt():
-    cmd = 'MyProgram.py foo1 foo2'
-    sys.argv = cmd.split()
-    res = main()
-    return res
-
 def main():
     print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        version='1.0.2',
-        description='Data Queue service',
+        version='1.0.3',
+        description='Read data from socket and push to Data Queue',
         epilog='EXAMPLE: %(prog)s [--host localhost] [--port 9988]"'
         )
 
