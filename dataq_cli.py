@@ -30,16 +30,21 @@ ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
 Socket READ enabled:   %(readP)s [%(readPkey)s]
 ''' % prms
 
-def listActiveQ(r, msg='DBG'):
-    print('~'*60)
-    print('%s; ACTIVE QUEUE (%s):'  % (msg,r.llen(aq)))
-    for rid in r.lrange(aq,0,-1):
+def list_queue(r,which):
+    if which == 'active':
+        q = aq
+    else:
+        q = iq
+
+    id_list = r.lrange(q,0,-1)
+    print('ACTIVE QUEUE (%s):'  % (len(id_list),))
+    for rid in id_list:
         rec = r.hgetall(rid)
-        #! print '%s: %s'%(rid,rec)
-        print('%s: %s'%(rid,rec['filename']))
+        print '%s: %s'%(rid,rec)
+        #print('%s: %s'%(rid,rec['filename']))
 
     
-def dumpQueue(r, outfile):
+def dump_queue(r, outfile):
     ids = r.lrange(aq,0,-1)
     activeIds = set(ids)
     for rid in ids:
@@ -48,16 +53,15 @@ def dumpQueue(r, outfile):
 
 
 
-def loadQueue(r, infile):
+def load_queue(r, infile):
     lut = dict() # lut[rid] => dict(filename,checksum,size,prio)
     warnings = 0
 
-    #!listActiveQ(r, msg='Before Reading') # DBG
+    #!list_activeq(r, msg='Before Reading') # DBG
 
     # stuff local structures from DB
-    ids = r.lrange(aq,0,-1)
-    activeIds = set(ids)
-    for rid in ids:
+    activeIds = set(r.lrange(aq,0,-1))
+    for rid in activeIds:
         lut[rid] = r.hgetall(rid)
 
     for line in infile:
@@ -68,7 +72,7 @@ def loadQueue(r, infile):
                             +' Ignoring duplicate.', checksum)
             warnings += 1
             continue
-                
+        
         activeIds.add(checksum)
         rec = dict(list(zip(['filename','size'],[fname,int(size)])))
         lut[checksum] = rec
@@ -78,35 +82,25 @@ def loadQueue(r, infile):
         r.hmset(checksum,rec)
 
     # DBG
-    listActiveQ(r, msg='After Reading')
+    #! list_activeq(r, msg='After Reading')
     print('Issued %d warnings'%warnings)
     
-        
-def processQueue(r, maxErrPer=3): 
-    errorCnt = 0
-    print('Process Queue')
-    while r.llen(aq) > 0:
-        rid = r.rpop(aq)
-        rec = r.hgetall(rid)
-        success = cfg['action'](rec)
-        if not success:
-            errorCnt += 1
-            cnt = r.hincrby(ecnt,rid)
-            if cnt > maxErrPer:
-                r.lpush(iq,rid)  # kept failing: move to Inactive queue
-                logging.warning(
-                    ': Failed to run action "%s" on record (%s) %d times.'
-                    +' Moving it to the Inactive queue',
-                    cfg['actionName'], rec,cnt)
+    
+    
+def advance_range(r,first,last):
+    ids = r.lrange(aq,0,-1)
+    print 'first=%s, last=%s'%(first,last)
 
-                continue
-
-            logging.error(': Failed to run action "%s" on record (%s) %d times',
-                          cfg['actionName'], rec,cnt)
-            r.lpush(aq,rid) # failed: got to the end of the line
-
-        
-
+    selected = ids[ids.index(first):ids.index(last)+1]
+    print 'Selected records = ',selected
+   
+    for rid in selected:
+        r.lrem(aq,0,rid)
+        # rpush doesn't seem to work with multi values
+        for sid in selected:
+            r.rpush(aq,sid)
+    
+    print 'Advanced %d records to next in line'%(len(selected),)
 
 ##############################################################################
 
@@ -130,8 +124,9 @@ def main():
                         type=int, default=9988)
     parser.add_argument('--summary',  help='Show summary of queue contents.',
                         action='store_true' )
-    parser.add_argument('--list',  help='List current of queue',
-                        action='store_true' )
+    parser.add_argument('--list',  help='List queue',
+                        choices=['active','inactive'],
+                        )
     parser.add_argument('--action',  
                         help='Turn on/off running actions on queue records.',
                         default=None,
@@ -150,13 +145,9 @@ def main():
     parser.add_argument('--load', 
                         help='File of data records to load into queue',
                         type=argparse.FileType('r') )
-
-    parser.add_argument('--continue',  help='Push records from socket onto'
-                        +' queue and run actions against records popped from'
-                        +' queue (undo SUSPEND).',
-                        action='store_true' )
     parser.add_argument('--advance',  help='Move records to end of queue.',
-                        action='store_true' )
+                        nargs=2 )
+
     parser.add_argument('--deactivate',  help='Move records to INACTIVE',
                         action='store_true' )
     parser.add_argument('--activate',  help='Move records to ACTIVE',
@@ -195,18 +186,21 @@ def main():
 
     if args.clear:
         r.flushall() # overkill !!!
+        r.set(actionP,'on')
+        r.set(readP,'on')
 
     if args.list:
-        listActiveQ(r)
+        list_queue(r,args.list)
         
     if args.dump:
-        dumpQueue(r, args.dump)
+        dump_queue(r, args.dump)
 
     if args.load:
-        loadQueue(r, args.load)
-    if args.clear:
-        pass
-
+        load_queue(r, args.load)
+    
+    if args.advance:
+        advance_range(r, args.advance[0], args.advance[1])
+        
     if args.summary:
         summary(r)
 
