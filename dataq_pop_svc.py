@@ -17,7 +17,7 @@ actionP = 'actionFlag' # on|off
 readP = 'readFlag' # on|off
 
 def echo(rec, probFail = 0.10):
-    print('Processing file: %s' % rec['filename'])
+    print('Processing record: %s' % rec)
     # !!! randomize success to simulate errors on cmds
     return random.random() > probFail
 
@@ -38,33 +38,35 @@ def process_queue_forever(r, poll_interval=0.5, maxErrPer=3):
     errorCnt = 0
     print('Process Queue')
     while True:
-        if r.llen(aq) == 0:
-            time.sleep(poll_interval)
-            continue
+        #! if r.llen(aq) == 0:
+        #!     time.sleep(poll_interval)  
+        #!     continue
         if r.get(actionP) == 'off':
             continue
-        while r.llen(aq) > 0:
-            rid = r.rpop(aq)
-            rec = r.hgetall(rid)
-            success = cfg['action'](rec)
-            if success:
-                print('Action ran successfully against:',rec)            
-            else:
-                errorCnt += 1
-                cnt = r.hincrby(ecnt,rid)
-                if cnt > maxErrPer:
-                    r.lpush(iq,rid)  # kept failing: move to Inactive queue
-                    logging.warning(
-                        ': Failed to run action "%s" on record (%s) %d times.'
-                        +' Moving it to the Inactive queue',
-                        cfg['actionName'], rec,cnt)
-    
-                    continue
-    
-                logging.error(': Failed to run action "%s" on record (%s) %d times',
-                              cfg['actionName'], rec,cnt)
-                r.lpush(aq,rid) # failed: got to the end of the line
-    
+
+        print 'BLOCKING rpop'
+        rid = r.brpop(aq) # BLOCKING pop
+        print '...got rpop'
+        rec = r.hgetall(rid)
+        success = cfg['action'](rec)
+        if success:
+            print('Action ran successfully against:',rec)            
+        else:
+            errorCnt += 1
+            cnt = r.hincrby(ecnt,rid)
+            if cnt > maxErrPer:
+                r.lpush(iq,rid)  # kept failing: move to Inactive queue
+                logging.warning(
+                    ': Failed to run action "%s" on record (%s) %d times.'
+                    +' Moving it to the Inactive queue',
+                    cfg['actionName'], rec,cnt)
+
+                continue
+
+            logging.error(': Failed to run action "%s" on record (%s) %d times',
+                          cfg['actionName'], rec,cnt)
+            r.lpush(aq,rid) # failed: got to the end of the line
+
 
         
 
