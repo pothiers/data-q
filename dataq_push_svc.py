@@ -26,13 +26,16 @@ readP = 'readFlag' # on|off
 class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
 
     def handle(self):
+        lut = dict() # lut[rid] => dict(filename,checksum,size,prio)
         r = self.server.r
 
         if r.get(readP) == 'off':
             return False
 
-        activeIds = self.server.activeIds
-        lut = self.server.lut
+        activeIds = set(r.lrange(aq,0,-1))
+        for rid in activeIds:
+            lut[rid] = r.hgetall(rid)
+
         self.data = self.rfile.readline().strip()
         
         (fname,checksum,size) = self.data.split() #! specific to our APP
@@ -91,19 +94,11 @@ def main():
     # Create the server, binding to HOST on PORT
     server = SocketServer.TCPServer((args.host, args.port),
                                     DataRecordTCPHandler)
-    # stuff local structures from DB
-    r = redis.StrictRedis()
-    activeIds = set(r.lrange(aq,0,-1))
-    lut = dict() # lut[rid] => dict(filename,checksum,size)
-    for rid in activeIds:
-        lut[rid] = r.hgetall(rid)
-    server.r = r
-    server.lut = lut
-    server.activeIds = activeIds
 
 
     # Activate the server; this will keep running until you
     # interrupt the program with Ctrl-C
+    server.r = redis.StrictRedis()
     server.serve_forever()
 
 if __name__ == '__main__':

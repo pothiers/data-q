@@ -39,15 +39,20 @@ def listActiveQ(r, msg='DBG'):
         print('%s: %s'%(rid,rec['filename']))
 
     
+def dumpQueue(r, outfile):
+    ids = r.lrange(aq,0,-1)
+    activeIds = set(ids)
+    for rid in ids:
+        rec = r.hgetall(rid)
+        print >> outfile, '%s %s %s'%(rec['filename'],rid,rec['size'])
 
-def loadQueue(r, infile, clear):
+
+
+def loadQueue(r, infile):
     lut = dict() # lut[rid] => dict(filename,checksum,size,prio)
     warnings = 0
-    
-    if clear:
-        r.flushall() # overkill !!!
 
-    listActiveQ(r, msg='Before Reading') # DBG
+    #!listActiveQ(r, msg='Before Reading') # DBG
 
     # stuff local structures from DB
     ids = r.lrange(aq,0,-1)
@@ -127,7 +132,6 @@ def main():
                         action='store_true' )
     parser.add_argument('--list',  help='List current of queue',
                         action='store_true' )
-
     parser.add_argument('--action',  
                         help='Turn on/off running actions on queue records.',
                         default=None,
@@ -138,14 +142,14 @@ def main():
                         default=None,
                         choices=['on','off'],
                         )
+    parser.add_argument('--clear',  help='Delete content of queue',
+                        action='store_true' )
 
+    parser.add_argument('--dump', help='Dump copy of queue into this file',
+                        type=argparse.FileType('w') )
     parser.add_argument('--load', 
                         help='File of data records to load into queue',
                         type=argparse.FileType('r') )
-    parser.add_argument('--dump', help='Dump copy of queue into this file',
-                        type=argparse.FileType('w') )
-    parser.add_argument('--clear',  help='Delete content of queue',
-                        action='store_true' )
 
     parser.add_argument('--continue',  help='Push records from socket onto'
                         +' queue and run actions against records popped from'
@@ -188,16 +192,23 @@ def main():
         r.set(actionP,args.action)
     if args.read is not None:
         r.set(readP,args.read)
-    if args.summary:
-        summary(r)
+
+    if args.clear:
+        r.flushall() # overkill !!!
+
     if args.list:
         listActiveQ(r)
         
+    if args.dump:
+        dumpQueue(r, args.dump)
 
     if args.load:
         loadQueue(r, args.load)
     if args.clear:
         pass
+
+    if args.summary:
+        summary(r)
 
     r.bgsave()
 
