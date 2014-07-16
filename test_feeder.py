@@ -2,34 +2,16 @@
 '''\
 Read a file of data records, send to dataq_svc over socket.
 
-Records start with a delay field that indicates seconds to wait before
-sending record.
+(Records end with optional delay field that indicates seconds to wait before
+sending record. Delay defaults to zero.)
 '''
 
 import os, sys, string, argparse, logging
 from pprint import pprint 
 import socket
 
-def dummyClient(host,port):
-    data = "This is it"
-    # Create a socket (SOCK_STREAM means a TCP socket)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    try:
-        # Connect to server and send data
-        sock.connect((host, port))
-        sock.sendall(data + "\n")
-
-        # Receive data from the server and shut down
-        received = sock.recv(1024)
-    finally:
-        sock.close()
-
-    print "Sent:     {}".format(data)
-    print "Received: {}".format(received)
 
 def feedFile(infile, host, port):
-
     for line in infile:
         data = line.strip()
         print "Sending:     {}".format(data)
@@ -80,9 +62,6 @@ def main():
                         )
     args = parser.parse_args()
 
-    #!print 'My args=',args
-    #!print 'infile=',args.infile
-
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
         parser.error('Invalid log level: %s' % args.loglevel) 
@@ -91,9 +70,8 @@ def main():
                         datefmt='%m-%d %H:%M'
                         )
     logging.debug('Debug output is enabled by test_feeder !!!')
+    ######################################################################
 
-
-    #!dummyClient(args.host, args.port)
     feedFile(args.infile, args.host, args.port)
 
 if __name__ == '__main__':

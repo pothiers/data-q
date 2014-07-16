@@ -1,14 +1,11 @@
 #! /usr/bin/env python
 '''\ 
 Pop records from queue and apply action. 
-
 '''
 
 import os, sys, string, argparse, logging
-from pprint import pprint 
 import random
 import redis
-import time
 
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
@@ -36,21 +33,16 @@ def process_queue_forever(r, poll_interval=0.5, maxErrPer=3):
         lut[rid] = r.hgetall(rid)
 
     errorCnt = 0
-    print('Process Queue')
+    logging.debug('Process Queue')
     while True:
-        #! if r.llen(aq) == 0:
-        #!     time.sleep(poll_interval)  
-        #!     continue
         if r.get(actionP) == 'off':
             continue
 
-        print 'BLOCKING rpop'
         rid = r.brpop(aq) # BLOCKING pop
-        print '...got rpop'
         rec = r.hgetall(rid)
         success = cfg['action'](rec)
         if success:
-            print('Action ran successfully against:',rec)            
+            logging.debug('Action ran successfully against:',rec)            
         else:
             errorCnt += 1
             cnt = r.hincrby(ecnt,rid)
@@ -101,13 +93,10 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
-    logging.debug('Debug output is enabled by dataq_svc!!!')
+    logging.debug('Debug output is enabled!!!')
+    ###########################################################################
 
-
-    # stuff local structures from DB
-    r = redis.StrictRedis()
-
-    process_queue_forever(r)
+    process_queue_forever(redis.StrictRedis())
 
 if __name__ == '__main__':
     main()

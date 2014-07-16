@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 '''\
-Modify the data queue (managed by: dataq_svc.py)
+Provide commands (switches) that can be run to modify or display the 
+data queue.
 '''
 
 import os, sys, string, argparse, logging
-from pprint import pprint 
 import redis
 
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
@@ -57,8 +57,6 @@ def load_queue(r, infile):
     lut = dict() # lut[rid] => dict(filename,checksum,size,prio)
     warnings = 0
 
-    #!list_activeq(r, msg='Before Reading') # DBG
-
     # stuff local structures from DB
     activeIds = set(r.lrange(aq,0,-1))
     for rid in activeIds:
@@ -81,8 +79,6 @@ def load_queue(r, infile):
         r.lpush(aq,checksum)
         r.hmset(checksum,rec)
 
-    # DBG
-    #! list_activeq(r, msg='After Reading')
     print('Issued %d warnings'%warnings)
     
     
@@ -121,7 +117,6 @@ def activate_range(r,first,last):
     they are on the INACTIVE queue to the tail of ACTIVE queue.'''
     ids = r.lrange(iq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
-
     print 'Selected records = ',selected
    
     for rid in selected:
@@ -137,9 +132,9 @@ def activate_range(r,first,last):
 def main():
     print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        version='1.0.1',
-        description='My shiny new python program',
-        epilog='EXAMPLE: %(prog)s a b"'
+        version='1.0.2',
+        description='Modify or display the data queue',
+        epilog='EXAMPLE: %(prog)s --summary"'
         )
     parser.add_argument('--host',  help='Host to bind to',
                         default='localhost')
@@ -168,6 +163,7 @@ def main():
     parser.add_argument('--load', 
                         help='File of data records to load into queue',
                         type=argparse.FileType('r') )
+
     parser.add_argument('--advance',  help='Move records to end of queue.',
                         nargs=2 )
 
@@ -181,15 +177,6 @@ def main():
                         default='WARNING',
                         )
     args = parser.parse_args()
-    #!args.outfile.close()
-    #!args.outfile = args.outfile.name
-
-    #!print 'My args=',args
-    #!print 'infile=',args.infile
-
-    #!validateQuality(parser, args.quality)
-    #!if not os.path.isfile(args.infile):
-    #!    parser.error('Cannot find input NTF "%s""'%(args.infile,))
 
 
     log_level = getattr(logging, args.loglevel.upper(), None)
@@ -199,7 +186,8 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
-    logging.debug('Debug output is enabled by nitfConvert!!!')
+    logging.debug('Debug output is enabled!!!')
+    ############################################################################
 
     r = redis.StrictRedis()
     if args.action is not None:

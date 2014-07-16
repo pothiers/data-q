@@ -7,7 +7,7 @@ checksum of two records is the same, we assume the data is. So we can
 throw one of them away.
 
 TODO:
-- regularly tell Redis to save to disk
+- regularly tell Redis to save to disk!!!
 - setup as daemon
 - trap for everything bad and do something good
 '''
@@ -62,7 +62,7 @@ class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
 
 ##############################################################################
 def main():
-    print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
+    #! print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
         version='1.0.3',
         description='Read data from socket and push to Data Queue',
@@ -88,13 +88,11 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
-    logging.debug('Debug output is enabled by dataq_svc!!!')
+    logging.debug('Debug output is enabled!!!')
+    ######################################################################
 
-
-    # Create the server, binding to HOST on PORT
     server = SocketServer.TCPServer((args.host, args.port),
                                     DataRecordTCPHandler)
-
 
     # Activate the server; this will keep running until you
     # interrupt the program with Ctrl-C
