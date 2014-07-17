@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 '''\
-Read a file of data records, send to dataq_svc over socket.
+Read a file of data records, send to dataq_push_svc over socket.
 
 (Records end with optional delay field that indicates seconds to wait before
 sending record. Delay defaults to zero.)
@@ -43,7 +43,7 @@ def main_tt():
     return res
 
 def main():
-    print 'EXECUTING: %s\n\n' % (string.join(sys.argv))
+    #!print 'EXECUTING: %s\n\n' % (string.join(sys.argv))
     parser = argparse.ArgumentParser(
         version='1.0.1',
         description='My shiny new python program',

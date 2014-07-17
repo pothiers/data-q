@@ -9,27 +9,52 @@ import redis
 
 aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
+rids = 'record_ids' # List of IDs used as keys to record hash.
 ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
 actionP = 'actionFlag' # on|off
 readP = 'readFlag' # on|off
 
+##############################################################################
+### Actions
 def echo(rec, probFail = 0.10):
-    print('Processing record: %s' % rec)
-    # !!! randomize success to simulate errors on cmds
+    print('Action=echo: processing record: %s' % rec)
+    # randomize success to simulate errors on cmds
     return random.random() > probFail
+
+def network_move(rec):
+    pass
+
+def disk_register(rec): # disk storage
+    pass
+
+def archive_ingest(rec):
+    pass
+
+
+
+action_lut = dict(
+    echo = echo,
+    network_move = network_move,
+    disk_register = disk_register,
+    archive_ingest = archive_ingest,
+    )
+###
+##############################################################################                    
 
 
 # !!! Temp config.  Will move external later. (ConfigParser)
 cfg = dict(
-    actionName = 'echo',
-    action = echo,
+    action_name = 'echo',
     )
+cfg['action'] = action_lut[cfg['action_name']]
+
 
 
 def process_queue_forever(r, poll_interval=0.5, maxErrPer=3): 
     activeIds = set(r.lrange(aq,0,-1))
+    rids =  r.smembers(rids)
     lut = dict() # lut[rid] => dict(filename,checksum,size)
-    for rid in activeIds:
+    for rid in rids:
         lut[rid] = r.hgetall(rid)
 
     errorCnt = 0
@@ -51,12 +76,12 @@ def process_queue_forever(r, poll_interval=0.5, maxErrPer=3):
                 logging.warning(
                     ': Failed to run action "%s" on record (%s) %d times.'
                     +' Moving it to the Inactive queue',
-                    cfg['actionName'], rec,cnt)
+                    cfg['action_name'], rec,cnt)
 
                 continue
 
             logging.error(': Failed to run action "%s" on record (%s) %d times',
-                          cfg['actionName'], rec,cnt)
+                          cfg['action_name'], rec,cnt)
             r.lpush(aq,rid) # failed: got to the end of the line
 
 
@@ -67,7 +92,7 @@ def process_queue_forever(r, poll_interval=0.5, maxErrPer=3):
 
 
 def main():
-    print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
+    #!print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
         version='1.0.2',
         description='Data Queue service',

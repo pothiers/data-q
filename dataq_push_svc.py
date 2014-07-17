@@ -16,12 +16,7 @@ import os, sys, string, argparse, logging
 import random
 import redis
 import SocketServer
-
-aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
-iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
-ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
-actionP = 'actionFlag' # on|off
-readP = 'readFlag' # on|off
+from dbvars import *
 
 class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
 
@@ -39,7 +34,7 @@ class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
         self.data = self.rfile.readline().strip()
         
         (fname,checksum,size) = self.data.split() #! specific to our APP
-        if checksum in activeIds:
+        if r.sismember(rids,checksum) == 1:
             logging.warning(': Record for %s is already in queue.' 
                             +' Ignoring duplicate.', checksum)
         else:
@@ -49,10 +44,10 @@ class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
             
             # add to DB
             r.lpush(aq,checksum)
+            r.sadd(rids,checksum) 
             r.hmset(checksum,rec)
+            logging.debug('Add to DB, rid=',checksum)
     
-            print("{} wrote:".format(self.client_address[0]))
-            print(self.data)
             self.wfile.write(self.data.upper())
 
         
