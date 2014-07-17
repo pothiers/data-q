@@ -8,11 +8,20 @@ import os, sys, string, argparse, logging
 import redis
 from dbvars import *
 
+def clear_db(r):
+    logging.info(': Deleting data queue data from redis database.')
+    if r.scard(rids) > 0:
+        r.delete(*r.smembers(rids))
+    r.delete(aq,iq,rids)
+    #!r.set(actionP,'on')
+    #!r.set(readP,'on')
+
 
 def summary(r):
     prms = dict(
         lenActive = r.llen(aq),
         lenInactive = r.llen(iq),
+        numRecords = r.scard(rids),
         actionP = r.get(actionP),
         actionPkey = actionP,
         readP = r.get(readP),
@@ -21,6 +30,7 @@ def summary(r):
     print '''
 Active queue length:   %(lenActive)d
 Inactive queue length: %(lenInactive)d
+Num records tracked:   %(numRecords)d
 ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
 Socket READ enabled:   %(readP)s [%(readPkey)s]
 ''' % prms
@@ -54,33 +64,25 @@ def dump_queue(r, outfile):
 
 
 def load_queue(r, infile):
-    lut = dict() # lut[rid] => dict(filename,checksum,size,prio)
     warnings = 0
-
-    # stuff local structures from DB
-    activeIds = set(r.lrange(aq,0,-1))
-    for rid in activeIds:
-        lut[rid] = r.hgetall(rid)
 
     for line in infile:
         prio = 0
         (fname,checksum,size) = line.strip().split()
-        if checksum in activeIds:
+        if r.sismember(rids,checksum) == 1:
             logging.warning(': Record for %s is already in queue.' 
                             +' Ignoring duplicate.', checksum)
             warnings += 1
             continue
         
-        activeIds.add(checksum)
         rec = dict(list(zip(['filename','size'],[fname,int(size)])))
-        lut[checksum] = rec
         
         # add to DB
         r.lpush(aq,checksum)
         r.hmset(checksum,rec)
+        r.sadd(rids,checksum) 
 
-    print('Issued %d warnings'%warnings)
-    
+    print('LOAD: Issued %d warnings'%warnings)
     
     
 def advance_range(r,first,last):
@@ -130,11 +132,11 @@ def activate_range(r,first,last):
 
 
 def main():
-    print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
+    #!print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
         version='1.0.2',
         description='Modify or display the data queue',
-        epilog='EXAMPLE: %(prog)s --summary"'
+        epilog='EXAMPLE: %(prog)s --summary'
         )
     parser.add_argument('--host',  help='Host to bind to',
                         default='localhost')
@@ -186,15 +188,12 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
-    logging.debug('Debug output is enabled!!!')
+    logging.debug('Debug output is enabled!!')
     ############################################################################
 
     r = redis.StrictRedis()
     if args.clear:
-        logging.warning(': Deleting everything in database!!!')
-        r.flushall() # overkill !!!
-        r.set(actionP,'on')
-        r.set(readP,'on')
+        clear_db(r)
 
     if args.action is not None:
         r.set(actionP,args.action)
@@ -223,7 +222,7 @@ def main():
     if args.summary:
         summary(r)
 
-    r.bgsave()
+    r.save()
 
 if __name__ == '__main__':
     main()
