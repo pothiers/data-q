@@ -6,12 +6,7 @@ data queue.
 
 import os, sys, string, argparse, logging
 import redis
-
-aq = 'activeq' # Active Queue. List of IDs. Pop and apply actions from this.
-iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
-ecnt = 'errorcnt' # errorcnt[id] = cnt; number of Action errors against ID
-actionP = 'actionFlag' # on|off
-readP = 'readFlag' # on|off
+from dbvars import *
 
 
 def summary(r):
@@ -31,17 +26,22 @@ Socket READ enabled:   %(readP)s [%(readPkey)s]
 ''' % prms
 
 def list_queue(r,which):
+    if which == 'records':
+        print('Records (%d):'  % (r.scard(rids),))
+        for rid in r.smembers(rids):
+            rec = r.hgetall(rid)
+            print rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in rec.items()])
+        return 
+
     if which == 'active':
         q = aq
     else:
         q = iq
-
     id_list = r.lrange(q,0,-1)
     print('%s QUEUE (%s):'  % (which, len(id_list)))
     for rid in id_list:
         rec = r.hgetall(rid)
-        print '%s: %s'%(rid,rec)
-        #print('%s: %s'%(rid,rec['filename']))
+        print rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in rec.items()])
 
     
 def dump_queue(r, outfile):
@@ -143,7 +143,7 @@ def main():
     parser.add_argument('--summary',  help='Show summary of queue contents.',
                         action='store_true' )
     parser.add_argument('--list',  help='List queue',
-                        choices=['active','inactive'],
+                        choices=['active','inactive','records'],
                         )
     parser.add_argument('--action',  
                         help='Turn on/off running actions on queue records.',
@@ -190,15 +190,17 @@ def main():
     ############################################################################
 
     r = redis.StrictRedis()
+    if args.clear:
+        logging.warning(': Deleting everything in database!!!')
+        r.flushall() # overkill !!!
+        r.set(actionP,'on')
+        r.set(readP,'on')
+
     if args.action is not None:
         r.set(actionP,args.action)
     if args.read is not None:
         r.set(readP,args.read)
 
-    if args.clear:
-        r.flushall() # overkill !!!
-        r.set(actionP,'on')
-        r.set(readP,'on')
 
     if args.list:
         list_queue(r,args.list)
