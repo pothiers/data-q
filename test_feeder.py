@@ -1,25 +1,25 @@
 #! /usr/bin/env python
 '''\
 Read a file of data records, send to dataq_push_svc over socket.
-
-(Records end with optional delay field that indicates seconds to wait before
-sending record. Delay defaults to zero.)
 '''
 
 import os, sys, string, argparse, logging
-from pprint import pprint 
 import socket
+import time
+import random
 
 
 def feedFile(infile, host, port):
     for line in infile:
+        delay = random.triangular(0,2.0,0.5)
         data = line.strip()
-        print "Sending:     {}".format(data)
+        logging.info('Sending (%s): %s ',delay,data)
 
         # Create a socket (SOCK_STREAM means a TCP socket)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
+            time.sleep(delay)
             # Connect to server and send data
             sock.connect((host, port))
             sock.sendall(data+'\n')
