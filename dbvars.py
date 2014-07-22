@@ -1,4 +1,6 @@
 aq = 'activeq'   # Active Queue. List of IDs. Pop and apply actions from this.
+aqs = 'activeq_set'  # SET version of "activeq" so we can tell if an id 
+                     # is already on the active list
 iq = 'inactiveq' # List of IDs. Stash records that will not be popped here
 
 rids = 'record_ids' # List of IDs used as keys to record hash.

@@ -5,17 +5,25 @@ data queue.
 '''
 
 import os, sys, string, argparse, logging
+import pprint
 import redis
 from dbvars import *
 
 def clear_db(r):
     logging.info(': Deleting data queue data from redis database.')
-    if r.scard(rids) > 0:
-        r.delete(*r.smembers(rids))
-    r.delete(aq,iq,rids)
-    #!r.set(actionP,'on')
-    #!r.set(readP,'on')
+    pl = r.pipeline()
+    pl.watch(rids,aq,aqs,iq,*r.smembers(rids))
+    pl.multi()
 
+    if pl.scard(rids) > 0:
+        pl.delete(*pl.smembers(rids))
+    pl.delete(aq,aqs,iq,rids)
+    #!pl.set(actionP,'on')
+    #!pl.set(readP,'on')
+    pl.execute()
+
+def info(r):
+    pprint.pprint(r.info())
 
 def summary(r):
     prms = dict(
@@ -69,19 +77,24 @@ def load_queue(r, infile):
     for line in infile:
         prio = 0
         (fname,checksum,size) = line.strip().split()
-        if r.sismember(rids,checksum) == 1:
+        rec = dict(list(zip(['filename','size'],[fname,int(size)])))
+
+        pl = r.pipeline()
+        pl.watch(rids,aq,aqs,checksum)
+        pl.multi()
+        
+        if pl.sismember(aqs,checksum) == 1:
             logging.warning(': Record for %s is already in queue.' 
                             +' Ignoring duplicate.', checksum)
             warnings += 1
-            continue
-        
-        rec = dict(list(zip(['filename','size'],[fname,int(size)])))
-        
-        # add to DB
-        r.lpush(aq,checksum)
-        r.hmset(checksum,rec)
-        r.sadd(rids,checksum) 
-
+        else:
+            # add to DB
+            pl.sadd(aqs,checksum) 
+            pl.lpush(aq,checksum)
+            pl.sadd(rids,checksum) 
+            pl.hmset(checksum,rec)
+            pl.save()    
+        pl.execute()
     print('LOAD: Issued %d warnings'%warnings)
     
     
@@ -89,42 +102,62 @@ def advance_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
     ever they are on the queue to the tail (they will become next to
     pop)'''
-    ids = r.lrange(aq,0,-1)
+    pl = r.pipeline()
+    pl.watch(aq)
+    pl.multi()
+
+    ids = pl.lrange(aq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
     print 'Selected records = ',selected
-   
+
+    # move selected IDs to the tail
     for rid in selected:
-        r.lrem(aq,0,rid)
+        pl.lrem(aq,0,rid)
         # rpush doesn't seem to work with multi values so I can't do
         # all SELECTED at once.
-        r.rpush(aq,rid)
-    
-    print 'Advanced %d records to next in line' % (len(selected),)
+        pl.rpush(aq,rid)
+    pl.save()    
+    pl.execute()    
+    print 'Advanced %d records to next-in-line' % (len(selected),)
 
 def deactivate_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
     they are on the active queue to the head of INACTIVE queue.'''
-    ids = r.lrange(aq,0,-1)
+    pl = r.pipeline()
+    pl.watch(aq,aqs,iq)
+    pl.multi()
+
+    ids = pl.lrange(aq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
     print 'Selected records = ',selected
    
     for rid in selected:
-        r.lrem(aq,0,rid)
-        r.lpush(iq,rid)
+        pl.lrem(aq,0,rid)
+        pl.srem(aqs,rid)
+        pl.lpush(iq,rid)
     
+    pl.save()    
+    pl.execute()    
     print 'Deactivated %d records' % (len(selected),)
 
 def activate_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
     they are on the INACTIVE queue to the tail of ACTIVE queue.'''
-    ids = r.lrange(iq,0,-1)
+    pl = r.pipeline()
+    pl.watch(aq,aqs,iq)
+    pl.multi()
+
+    ids = pl.lrange(iq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
     print 'Selected records = ',selected
    
     for rid in selected:
-        r.lrem(iq,0,rid)
-        r.rpush(aq,rid)
+        pl.lrem(iq,0,rid)
+        pl.sadd(aqs,rid)
+        pl.rpush(aq,rid)
 
+    pl.save()    
+    pl.execute()    
     print 'Activated %d records' % (len(selected),)
 
 
@@ -143,6 +176,8 @@ def main():
     parser.add_argument('--port',  help='Port to bind to',
                         type=int, default=9988)
     parser.add_argument('--summary',  help='Show summary of queue contents.',
+                        action='store_true' )
+    parser.add_argument('--info',  help='Show info about Redis server.',
                         action='store_true' )
     parser.add_argument('--list',  help='List queue',
                         choices=['active','inactive','records'],
@@ -219,6 +254,8 @@ def main():
     if args.activate:
         activate_range(r, args.activate[0], args.activate[1])
         
+    if args.info:
+        info(r)
     if args.summary:
         summary(r)
 

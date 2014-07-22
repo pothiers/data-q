@@ -4,23 +4,22 @@ Pop records from queue and apply action.
 '''
 
 import os, sys, string, argparse, logging
-import random
 import redis
+import json
 from dbvars import *
 from actions import *
 
 
-# !!! Temp config.  Will move external later. (ConfigParser)
-cfg = dict(
-    action_name = 'echo10',
-    )
-cfg['action'] = action_lut[cfg['action_name']]
-
-
-
-def process_queue_forever(r, poll_interval=0.5, maxErrPer=3): 
-    activeIds = set(r.lrange(aq,0,-1))
-    rids =  r.smembers(rids)
+def process_queue_forever(r, cfg_file): 
+    if cfg_file is None:
+        cfg = dict(
+            maximum_errors_per_record = 3, 
+            action_name = "echo00",
+            )
+    else:
+        cfg = json.load(cfg_file)
+    action_name = cfg['action_name']
+    action = action_lut[action_name]
 
     errorCnt = 0
     logging.debug('Process Queue')
@@ -28,28 +27,35 @@ def process_queue_forever(r, poll_interval=0.5, maxErrPer=3):
         if r.get(actionP) == 'off':
             continue
 
-        rid = r.brpop(aq) # BLOCKING pop
+        rid = r.brpop([aq]) # BLOCKING pop (over list of keys)
+
+        pl = r.pipeline()
+        pl.watch(aq,aqs,rids,ecnt,iq,rid)
+        pl.multi()
+
+        pl.srem(aqs,rid) 
         rec = r.hgetall(rid)
-        success = cfg['action'](rec)
+        success = action(rec)
         if success:
-            logging.debug('Action ran successfully against:',rec)            
+            pl.srem(rids,rid) 
+            logging.debug('Action ran successfully against: %s',rec)            
         else:
             errorCnt += 1
-            cnt = r.hincrby(ecnt,rid)
-            if cnt > maxErrPer:
-                r.lpush(iq,rid)  # kept failing: move to Inactive queue
+            cnt = pl.hincrby(ecnt,rid)
+            print 'Error count for "%s"=%d'%(rid,cnt)
+            if cnt > cfg['maximum_errors_per_record']:
+                pl.lpush(iq,rid)  # kept failing: move to Inactive queue
                 logging.warning(
                     ': Failed to run action "%s" on record (%s) %d times.'
                     +' Moving it to the Inactive queue',
-                    cfg['action_name'], rec,cnt)
-
-                continue
-
-            logging.error(': Failed to run action "%s" on record (%s) %d times',
-                          cfg['action_name'], rec,cnt)
-            r.lpush(aq,rid) # failed: got to the end of the line
-        r.save()    
-
+                    action_name, rec,cnt)
+            else:
+                logging.error(
+                    ': Failed to run action "%s" on record (%s) %d times',
+                    action_name, rec, cnt)
+                pl.lpush(aq,rid) # failed: got to the end of the line
+        pl.save()    
+        pl.execute()
 
 ##############################################################################
 
@@ -59,13 +65,16 @@ def main():
     parser = argparse.ArgumentParser(
         version='1.0.2',
         description='Data Queue service',
-        epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
+        epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
         )
 
     parser.add_argument('--host',  help='Host to bind to',
                         default='localhost')
     parser.add_argument('--port',  help='Port to bind to',
                         type=int, default=9988)
+    parser.add_argument('--cfg', 
+                        help='Configuration file',
+                        type=argparse.FileType('r') )
 
 
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
@@ -84,7 +93,7 @@ def main():
     logging.debug('Debug output is enabled!!')
     ###########################################################################
 
-    process_queue_forever(redis.StrictRedis())
+    process_queue_forever(redis.StrictRedis(), args.cfg)
 
 if __name__ == '__main__':
     main()

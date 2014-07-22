@@ -26,18 +26,24 @@ class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
 
         self.data = self.rfile.readline().strip()
         (fname,checksum,size) = self.data.split() #! specific to our APP
+        rec = dict(list(zip(['filename','size'],[fname,int(size)])))
 
-        if r.sismember(rids,checksum) == 1:
+        pl = r.pipeline()
+        pl.watch(rids,aq,aqs,checksum)
+        pl.multi()
+        if pl.sismember(aqs,checksum) == 1:
             logging.warning(': Record for %s is already in queue.' 
                             +' Ignoring duplicate.', checksum)
+            self.wfile.write('Ignored ID=%s'%checksum)
         else:
-            rec = dict(list(zip(['filename','size'],[fname,int(size)])))
             # add to DB
-            r.lpush(aq,checksum)
-            r.hmset(checksum,rec)
-            r.sadd(rids,checksum) 
-            r.save()    
-            self.wfile.write(self.data.upper())
+            pl.sadd(aqs,checksum) 
+            pl.lpush(aq,checksum)
+            pl.sadd(rids,checksum) 
+            pl.hmset(checksum,rec)
+            pl.save()    
+            self.wfile.write('Pushed ID=%s'%checksum)
+        pl.execute()
 
 ##############################################################################
 def main():
