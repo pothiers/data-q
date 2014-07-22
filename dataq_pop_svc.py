@@ -27,7 +27,7 @@ def process_queue_forever(r, cfg_file):
         if r.get(actionP) == 'off':
             continue
 
-        rid = r.brpop([aq]) # BLOCKING pop (over list of keys)
+        (kname,rid) = r.brpop([aq]) # BLOCKING pop (over list of keys)
 
         pl = r.pipeline()
         pl.watch(aq,aqs,rids,ecnt,iq,rid)
@@ -38,11 +38,12 @@ def process_queue_forever(r, cfg_file):
         success = action(rec)
         if success:
             pl.srem(rids,rid) 
-            logging.debug('Action ran successfully against: %s',rec)            
+            logging.debug('Action ran successfully against (%s): %s',
+                          rid,rec)            
         else:
             errorCnt += 1
             cnt = pl.hincrby(ecnt,rid)
-            print 'Error count for "%s"=%d'%(rid,cnt)
+            print('Error count for "%s"=%d'%(rid,cnt))
             if cnt > cfg['maximum_errors_per_record']:
                 pl.lpush(iq,rid)  # kept failing: move to Inactive queue
                 logging.warning(
@@ -63,7 +64,6 @@ def process_queue_forever(r, cfg_file):
 def main():
     #!print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        version='1.0.2',
         description='Data Queue service',
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
         )

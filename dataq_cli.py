@@ -35,20 +35,20 @@ def summary(r):
         readP = r.get(readP),
         readPkey = readP,
         )
-    print '''
+    print('''
 Active queue length:   %(lenActive)d
 Inactive queue length: %(lenInactive)d
 Num records tracked:   %(numRecords)d
 ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
 Socket READ enabled:   %(readP)s [%(readPkey)s]
-''' % prms
+''' % prms)
 
 def list_queue(r,which):
     if which == 'records':
-        print('Records (%d):'  % (r.scard(rids),))
+        print(('Records (%d):'  % (r.scard(rids),)))
         for rid in r.smembers(rids):
             rec = r.hgetall(rid)
-            print rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in rec.items()])
+            print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in list(rec.items())]))
         return 
 
     if which == 'active':
@@ -56,10 +56,10 @@ def list_queue(r,which):
     else:
         q = iq
     id_list = r.lrange(q,0,-1)
-    print('%s QUEUE (%s):'  % (which, len(id_list)))
+    print(('%s QUEUE (%s):'  % (which, len(id_list))))
     for rid in id_list:
         rec = r.hgetall(rid)
-        print rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in rec.items()])
+        print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in list(rec.items())]))
 
     
 def dump_queue(r, outfile):
@@ -67,7 +67,7 @@ def dump_queue(r, outfile):
     activeIds = set(ids)
     for rid in ids:
         rec = r.hgetall(rid)
-        print >> outfile, '%s %s %s'%(rec['filename'],rid,rec['size'])
+        print('%s %s %s'%(rec['filename'],rid,rec['size']), file=outfile)
 
 
 
@@ -95,7 +95,7 @@ def load_queue(r, infile):
             pl.hmset(checksum,rec)
             pl.save()    
         pl.execute()
-    print('LOAD: Issued %d warnings'%warnings)
+    print(('LOAD: Issued %d warnings'%warnings))
     
     
 def advance_range(r,first,last):
@@ -108,7 +108,7 @@ def advance_range(r,first,last):
 
     ids = pl.lrange(aq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
-    print 'Selected records = ',selected
+    print('Selected records = ',selected)
 
     # move selected IDs to the tail
     for rid in selected:
@@ -118,7 +118,7 @@ def advance_range(r,first,last):
         pl.rpush(aq,rid)
     pl.save()    
     pl.execute()    
-    print 'Advanced %d records to next-in-line' % (len(selected),)
+    print('Advanced %d records to next-in-line' % (len(selected),))
 
 def deactivate_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
@@ -129,7 +129,7 @@ def deactivate_range(r,first,last):
 
     ids = pl.lrange(aq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
-    print 'Selected records = ',selected
+    print('Selected records = ',selected)
    
     for rid in selected:
         pl.lrem(aq,0,rid)
@@ -138,7 +138,7 @@ def deactivate_range(r,first,last):
     
     pl.save()    
     pl.execute()    
-    print 'Deactivated %d records' % (len(selected),)
+    print('Deactivated %d records' % (len(selected),))
 
 def activate_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
@@ -149,7 +149,7 @@ def activate_range(r,first,last):
 
     ids = pl.lrange(iq,0,-1)
     selected = ids[ids.index(first):ids.index(last)+1]
-    print 'Selected records = ',selected
+    print('Selected records = ',selected)
    
     for rid in selected:
         pl.lrem(iq,0,rid)
@@ -158,7 +158,7 @@ def activate_range(r,first,last):
 
     pl.save()    
     pl.execute()    
-    print 'Activated %d records' % (len(selected),)
+    print('Activated %d records' % (len(selected),))
 
 
 ##############################################################################
@@ -167,7 +167,6 @@ def activate_range(r,first,last):
 def main():
     #!print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        version='1.0.2',
         description='Modify or display the data queue',
         epilog='EXAMPLE: %(prog)s --summary'
         )

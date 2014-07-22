@@ -22,31 +22,26 @@ def feedFile(infile, host, port):
             time.sleep(delay)
             # Connect to server and send data
             sock.connect((host, port))
-            sock.sendall(data+'\n')
+            sock.sendall(bytes(data+'\n','utf-8'))
 
             # Receive data from the server
-            received = sock.recv(1024)
+            received = str(sock.recv(1024),'utf-8')
         finally:
             # ... and shut down
             sock.close()
 
-        print "Received: {}".format(received)
+        print("Received: {}".format(received))
+
 
 
 
 ##############################################################################
 
-def main_tt():
-    cmd = 'MyProgram.py foo1 foo2'
-    sys.argv = cmd.split()
-    res = main()
-    return res
 
 def main():
     #!print 'EXECUTING: %s\n\n' % (string.join(sys.argv))
     parser = argparse.ArgumentParser(
-        version='1.0.1',
-        description='My shiny new python program',
+        description='Stuff text into a socket',
         epilog='EXAMPLE: %(prog)s a b"'
         )
     parser.add_argument('infile',  help='Input file',

@@ -14,17 +14,18 @@ TODO:
 import os, sys, string, argparse, logging
 import random
 import redis
-import SocketServer
+import socketserver
 from dbvars import *
 
-class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
+class DataRecordTCPHandler(socketserver.StreamRequestHandler):
 
     def handle(self):
         r = self.server.r
         if r.get(readP) == 'off':
             return False
 
-        self.data = self.rfile.readline().strip()
+        self.data = self.rfile.readline().strip().decode()
+        logging.debug('Data line read from socket=%s',self.data)
         (fname,checksum,size) = self.data.split() #! specific to our APP
         rec = dict(list(zip(['filename','size'],[fname,int(size)])))
 
@@ -42,14 +43,13 @@ class DataRecordTCPHandler(SocketServer.StreamRequestHandler):
             pl.sadd(rids,checksum) 
             pl.hmset(checksum,rec)
             pl.save()    
-            self.wfile.write('Pushed ID=%s'%checksum)
+            self.wfile.write(bytes('Pushed ID=%s'%checksum,'UTF-8'))
         pl.execute()
 
 ##############################################################################
 def main():
     #! print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        version='1.0.3',
         description='Read data from socket and push to Data Queue',
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
         )
@@ -76,7 +76,7 @@ def main():
     logging.debug('Debug output is enabled!!')
     ######################################################################
 
-    server = SocketServer.TCPServer((args.host, args.port),
+    server = socketserver.TCPServer((args.host, args.port),
                                     DataRecordTCPHandler)
 
     # Activate the server; this will keep running until you
