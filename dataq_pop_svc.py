@@ -3,14 +3,20 @@
 Pop records from queue and apply action. 
 '''
 
+# Probably could use asyncio to good use here.  Didn't know about it
+# when I started and maybe our case is easy enuf that it doesn't
+# matter. But we do a loop (while True) that smacks of an event loop!!!
+
+
 import os, sys, string, argparse, logging
 import redis
 import json
 from dbvars import *
 from actions import *
+import utils
+import time
 
-
-def process_queue_forever(r, cfg_file): 
+def process_queue_forever(r, cfg_file,delay=1.0): 
     if cfg_file is None:
         cfg = dict(
             maximum_errors_per_record = 3, 
@@ -25,6 +31,7 @@ def process_queue_forever(r, cfg_file):
     logging.debug('Process Queue')
     while True:
         if r.get(actionP) == b'off':
+            time.sleep(delay)
             continue
 
         (keynameB,ridB) = r.brpop([aq]) # BLOCKING pop (over list of keys)
@@ -36,7 +43,8 @@ def process_queue_forever(r, cfg_file):
         pl.multi()
 
         pl.srem(aqs,rid) 
-        rec = r.hgetall(rid)
+        rec = utils.decode_dict(r.hgetall(rid))
+        
         success = action(rec)
         if success:
             logging.debug('Action ran successfully against (%s): %s',

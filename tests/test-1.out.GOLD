@@ -1,0 +1,80 @@
+######################################################################
+##### Basic socket read, load, dump
+
+Active queue length:   0
+Inactive queue length: 0
+Num records tracked:   0
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
+Received: Pushed ID=c0ea16eaae6b043b5e569467ab74cba0
+Received: Pushed ID=e4ea72404a8eb317ce9d33360b95ecc6
+Received: Pushed ID=f45cc4c647913bc6e22df280c733758e
+Received: Pushed ID=48ccc22dd91a82c010deb26567f7a64a
+Received: Pushed ID=18ea6218a4a8bdc38f52e5466e31973d
+Received: Pushed ID=44d95052214f9d7f4fa2ffde342875c1
+Received: Pushed ID=9e3ea22ccd74dd78a1417d6e8a2e5a36
+Received: Pushed ID=2be92a9f62367b6ee2326887d58e368c
+Received: Pushed ID=8473db06aefc8853aa5da29b645ff865
+Received: Pushed ID=5a80736c339faec57dac3ff36563664d
+active QUEUE (9):
+5a80736c339faec57dac3ff36563664d : size=500770, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140627_063420_ooi_VR_v1.hdr
+8473db06aefc8853aa5da29b645ff865 : size=48360, filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_040950_osj_VR_v1.hdr
+2be92a9f62367b6ee2326887d58e368c : size=44022, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140628_084036_osj_VR_v1.hdr
+9e3ea22ccd74dd78a1417d6e8a2e5a36 : size=31584, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140630_084635_ose_VR_v1.hdr
+44d95052214f9d7f4fa2ffde342875c1 : size=22697, filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_072234_opd_VR_v1.hdr
+18ea6218a4a8bdc38f52e5466e31973d : size=524745, filename=/noao-tuc-z1/pipeline/Q20140702/DEC14A/20140625/c4d_140626_084349_oow_g_v1.hdr
+48ccc22dd91a82c010deb26567f7a64a : size=9922, filename=/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232539_ori.hdr
+f45cc4c647913bc6e22df280c733758e : size=9922, filename=/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232715_ori.hdr
+e4ea72404a8eb317ce9d33360b95ecc6 : size=23571, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140629_075520_opd_VR_v1.hdr
+
+Active queue length:   9
+Inactive queue length: 0
+Num records tracked:   9
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
+
+Active queue length:   9
+Inactive queue length: 0
+Num records tracked:   9
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
+/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140627_063420_ooi_VR_v1.hdr 5a80736c339faec57dac3ff36563664d 500770
+/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_040950_osj_VR_v1.hdr 8473db06aefc8853aa5da29b645ff865 48360
+/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140628_084036_osj_VR_v1.hdr 2be92a9f62367b6ee2326887d58e368c 44022
+/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140630_084635_ose_VR_v1.hdr 9e3ea22ccd74dd78a1417d6e8a2e5a36 31584
+/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_072234_opd_VR_v1.hdr 44d95052214f9d7f4fa2ffde342875c1 22697
+/noao-tuc-z1/pipeline/Q20140702/DEC14A/20140625/c4d_140626_084349_oow_g_v1.hdr 18ea6218a4a8bdc38f52e5466e31973d 524745
+/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232539_ori.hdr 48ccc22dd91a82c010deb26567f7a64a 9922
+/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232715_ori.hdr f45cc4c647913bc6e22df280c733758e 9922
+/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140629_075520_opd_VR_v1.hdr e4ea72404a8eb317ce9d33360b95ecc6 23571
+LOAD: Issued 2 warnings. 3 loaded
+
+Active queue length:   12
+Inactive queue length: 0
+Num records tracked:   12
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
+active QUEUE (12):
+2ec58779fa8230f4c3ef8c5fe610ea33 : size=19709, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140628_091633_opi_VR_v1.hdr
+9a92153c133831c3ac95ae6513236ed3 : size=42173, filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140628_075850_osw_VR_v1.hdr
+6c03c7bd3cb5913d9b20af91e13a2bd2 : size=19690, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140627_081321_opi_VR_v1.hdr
+5a80736c339faec57dac3ff36563664d : size=500770, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140627_063420_ooi_VR_v1.hdr
+8473db06aefc8853aa5da29b645ff865 : size=48360, filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_040950_osj_VR_v1.hdr
+2be92a9f62367b6ee2326887d58e368c : size=44022, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140628_084036_osj_VR_v1.hdr
+9e3ea22ccd74dd78a1417d6e8a2e5a36 : size=31584, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140630_084635_ose_VR_v1.hdr
+44d95052214f9d7f4fa2ffde342875c1 : size=22697, filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_072234_opd_VR_v1.hdr
+18ea6218a4a8bdc38f52e5466e31973d : size=524745, filename=/noao-tuc-z1/pipeline/Q20140702/DEC14A/20140625/c4d_140626_084349_oow_g_v1.hdr
+48ccc22dd91a82c010deb26567f7a64a : size=9922, filename=/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232539_ori.hdr
+f45cc4c647913bc6e22df280c733758e : size=9922, filename=/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232715_ori.hdr
+e4ea72404a8eb317ce9d33360b95ecc6 : size=23571, filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140629_075520_opd_VR_v1.hdr
+
+Active queue length:   12
+Inactive queue length: 0
+Num records tracked:   12
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
