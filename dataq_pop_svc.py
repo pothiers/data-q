@@ -24,10 +24,12 @@ def process_queue_forever(r, cfg_file):
     errorCnt = 0
     logging.debug('Process Queue')
     while True:
-        if r.get(actionP) == 'off':
+        if r.get(actionP) == b'off':
             continue
 
-        (kname,rid) = r.brpop([aq]) # BLOCKING pop (over list of keys)
+        (keynameB,ridB) = r.brpop([aq]) # BLOCKING pop (over list of keys)
+        keyname = keynameB.decode()
+        rid = ridB.decode()
 
         pl = r.pipeline()
         pl.watch(aq,aqs,rids,ecnt,iq,rid)
@@ -37,9 +39,9 @@ def process_queue_forever(r, cfg_file):
         rec = r.hgetall(rid)
         success = action(rec)
         if success:
-            pl.srem(rids,rid) 
             logging.debug('Action ran successfully against (%s): %s',
                           rid,rec)            
+            pl.srem(rids,rid) 
         else:
             errorCnt += 1
             cnt = pl.hincrby(ecnt,rid)

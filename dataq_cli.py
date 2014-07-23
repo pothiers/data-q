@@ -10,29 +10,36 @@ import redis
 from dbvars import *
 
 def clear_db(r):
-    logging.info(': Deleting data queue data from redis database.')
+    logging.info(': Resettomg everything related to data queue in redis DB.')
     pl = r.pipeline()
     pl.watch(rids,aq,aqs,iq,*r.smembers(rids))
     pl.multi()
-
-    if pl.scard(rids) > 0:
+    
+    if r.scard(rids) > 0:
         pl.delete(*pl.smembers(rids))
     pl.delete(aq,aqs,iq,rids)
-    #!pl.set(actionP,'on')
-    #!pl.set(readP,'on')
+    if pl.get(actionP) == None:
+        pl.set(actionP,'on')
+    if pl.get(readP) == None:
+        pl.set(readP,'on')
     pl.execute()
 
 def info(r):
     pprint.pprint(r.info())
 
 def summary(r):
+    if r.get(actionP) == None:
+        r.set(actionP,'on')
+    if r.get(readP) == None:
+        r.set(readP,'on')
+
     prms = dict(
         lenActive = r.llen(aq),
         lenInactive = r.llen(iq),
         numRecords = r.scard(rids),
-        actionP = r.get(actionP),
+        actionP = r.get(actionP).decode(),
         actionPkey = actionP,
-        readP = r.get(readP),
+        readP = r.get(readP).decode(),
         readPkey = readP,
         )
     print('''
@@ -191,7 +198,7 @@ def main():
                         default=None,
                         choices=['on','off'],
                         )
-    parser.add_argument('--clear',  help='Delete content of queue',
+    parser.add_argument('--clear',  help='Delete queue related data from DB',
                         action='store_true' )
 
     parser.add_argument('--dump', help='Dump copy of queue into this file',
