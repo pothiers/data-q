@@ -5,6 +5,16 @@
 #   loadenv dq
 #   $PHOME/tests/smoke.sh
 #
+# LIMITATIONS:
+#   This doesn't startup the required services first!!! The services
+#   are given in the "setup" function below.  Haven't decided how I
+#   want to handle the case of running smoke when services may or may
+#   not be already running.
+#
+#   There is asynchronous behavior in this stuff.  Testing such is
+#   problematic.  
+#
+
 
 file=$0
 dir=`dirname $file`
@@ -20,6 +30,12 @@ SMOKEOUT="README-smoke-results.txt"
 
 ##############################################################################
 ### Test sequence functions
+function setup () {
+    redis-server &
+    dataq_push_svc.py --loglevel DEBUG &    
+    dataq_pop_svc.py --loglevel DEBUG &    
+}
+
 function feed () {
     dataq_cli.py  --clear --action off --summary
     test_feeder.py q1.dat 
@@ -32,6 +48,7 @@ function load () {
 }
 
 
+###
 ##############################################################################
 
 
