@@ -126,7 +126,7 @@ function testScm () {
       rm $diff $GOLD.clean $actual.clean
   fi
 }  # END testScm
-~/sandbox/data-q/tests/
+
 ##
 ## Run given CMD and compare its ACTUAL stdout to EXPECTED stdout.
 ## Ignore lines that start with COMMENT (defaults to ";")
