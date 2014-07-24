@@ -1,0 +1,4 @@
+*.clean
+*.diff
+*.dump
+*.out

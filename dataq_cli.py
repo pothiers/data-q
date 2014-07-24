@@ -58,7 +58,8 @@ def list_queue(r,which):
         for ridB in r.smembers(rids):
             rid = ridB.decode()
             rec = utils.decode_dict(r.hgetall(rid))
-            print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in list(rec.items())]))
+            kvlist = sorted(rec.items(), key=lambda x: x[0])
+            print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
         return 
 
     if which == 'active':
@@ -70,7 +71,8 @@ def list_queue(r,which):
     for ridB in id_list:
         rid = ridB.decode()
         rec = utils.decode_dict(r.hgetall(rid))
-        print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in list(rec.items())]))
+        kvlist = sorted(rec.items(), key=lambda x: x[0])
+        print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
 
     
 def dump_queue(r, outfile):

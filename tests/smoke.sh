@@ -10,10 +10,29 @@ file=$0
 dir=`dirname $file`
 origdir=`pwd`
 cd $dir
+dir=`pwd`
+PATH=$dir:$PATH
 
 source smoke-lib.sh
 return_code=0
 SMOKEOUT="README-smoke-results.txt"
+
+
+##############################################################################
+### Test sequence functions
+function feed () {
+    dataq_cli.py  --clear --action off --summary
+    test_feeder.py q1.dat 
+    dataq_cli.py  --list active --summary
+}
+
+function load () {
+    dataq_cli.py  --load q2.dat --summary
+    dataq_cli.py  --list active --summary
+}
+
+
+##############################################################################
 
 
 echo ""
@@ -21,20 +40,25 @@ echo "Starting tests in \"$dir\" ..."
 echo ""
 echo ""
 
+testCommand feed1 "feed 2>&1" "^\#" n
 
-#! testCommand conrules1_1 "conrules -p ../python -m jungle-objects.xml jungle.lpc.gz conrules_out.1.lpc.gz 2>&1" "^\#" n
-#! lpc_cat conrules_out.1.lpc.gz > conrules_out.1.lpc.xml
-#! testOutput  conrules1_2 conrules_out.lpc.xml "^\#" n
+testCommand dump1 "dataq_cli.py --dump q1.dump --summary" "^\#" n
+testOutput out1 q1.dump '^\#' n
 
-
-testOutput out test-1.out '^\#' n
-testOutput out test-2.out '^\#' n
-
+testCommand load1 "load 2>&1" "^\#" n
 
 ###########################################
-#! echo "WARNING: ignoring remainder of tests"
-#! exit $return_code
+echo "WARNING: ignoring remainder of tests"
+exit $return_code
 ###########################################
+
+testCommand load1_1 "test-1.sh 2>&1" "^\#" n
+testOutput out1 test-1.out '^\#' n
+
+testCommand advance1_1 "test-2.sh 2>&1" "^\#" n
+testOutput out2 test-2.out '^\#' n
+
+
 
 
 ##############################################################################

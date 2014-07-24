@@ -1,0 +1,31 @@
+WARNING : Record for 8473db06aefc8853aa5da29b645ff865 is already in queue. Ignoring duplicate.
+WARNING : Record for 5a80736c339faec57dac3ff36563664d is already in queue. Ignoring duplicate.
+LOAD: Issued 2 warnings. 3 loaded
+
+Active queue length:   13
+Inactive queue length: 0
+Num records tracked:   13
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
+active QUEUE (13):
+2ec58779fa8230f4c3ef8c5fe610ea33 : filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140628_091633_opi_VR_v1.hdr, size=19709
+9a92153c133831c3ac95ae6513236ed3 : filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140628_075850_osw_VR_v1.hdr, size=42173
+6c03c7bd3cb5913d9b20af91e13a2bd2 : filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140627_081321_opi_VR_v1.hdr, size=19690
+5a80736c339faec57dac3ff36563664d : filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140627_063420_ooi_VR_v1.hdr, size=500770
+8473db06aefc8853aa5da29b645ff865 : filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_040950_osj_VR_v1.hdr, size=48360
+2be92a9f62367b6ee2326887d58e368c : filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140628_084036_osj_VR_v1.hdr, size=44022
+9e3ea22ccd74dd78a1417d6e8a2e5a36 : filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140630_084635_ose_VR_v1.hdr, size=31584
+44d95052214f9d7f4fa2ffde342875c1 : filename=/noao-tuc-z1/pipeline/Q20140707/DEC14A/20140622/c4d_140629_072234_opd_VR_v1.hdr, size=22697
+18ea6218a4a8bdc38f52e5466e31973d : filename=/noao-tuc-z1/pipeline/Q20140702/DEC14A/20140625/c4d_140626_084349_oow_g_v1.hdr, size=524745
+48ccc22dd91a82c010deb26567f7a64a : filename=/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232539_ori.hdr, size=9922
+f45cc4c647913bc6e22df280c733758e : filename=/noao-tuc-z1/mtn/20140708/ct15m/smarts/c15e_140708_232715_ori.hdr, size=9922
+e4ea72404a8eb317ce9d33360b95ecc6 : filename=/noao-tuc-z1/pipeline/Q20140708/DEC14A/20140622/c4d_140629_075520_opd_VR_v1.hdr, size=23571
+c0ea16eaae6b043b5e569467ab74cba0 : filename=/noao-tuc-z1/pipeline/Q20140702/DEC14A/20140625/c4d_140626_082657_opw_g_v1.hdr, size=25311
+
+Active queue length:   13
+Inactive queue length: 0
+Num records tracked:   13
+ACTIONS enabled:       off [actionFlag]
+Socket READ enabled:   on [readFlag]
+
