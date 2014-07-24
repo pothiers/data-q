@@ -37,7 +37,8 @@ function setup () {
 }
 
 function feed () {
-    dataq_cli.py  --clear --action off --summary
+    dataq_cli.py  --clear --action on
+    dataq_cli.py  --action off --summary
     test_feeder.py q1.dat 
     dataq_cli.py  --list active --summary
 }
@@ -45,6 +46,33 @@ function feed () {
 function load () {
     dataq_cli.py  --load q2.dat --summary
     dataq_cli.py  --list active --summary
+}
+
+function advance() {
+    dataq_cli.py  --advance 18ea6218a4a8bdc38f52e5466e31973d f45cc4c647913bc6e22df280c733758e --summary
+    dataq_cli.py  --list active
+}
+
+function actions() {
+    dataq_cli.py  --action on --summary 
+    sleep 2 # let queue process (uhg!!)
+    dataq_cli.py  --list active
+}
+
+function deactivate() {
+    dataq_cli.py  --clear --action off --summary
+    dataq_cli.py  --load q1.dat 
+    dataq_cli.py  --load q2.dat --summary
+    dataq_cli.py  --deactivate 5a80736c339faec57dac3ff36563664d 2be92a9f62367b6ee2326887d58e368c --summary
+    dataq_cli.py  --list active
+    dataq_cli.py  --list inactive
+}
+
+function activate() {
+    dataq_cli.py  --activate 5a80736c339faec57dac3ff36563664d 8473db06aefc8853aa5da29b645ff865 --summary
+    dataq_cli.py  --list active
+    dataq_cli.py  --list inactive
+    dataq_cli.py  --list records
 }
 
 
@@ -64,17 +92,16 @@ testOutput out1 q1.dump '^\#' n
 
 testCommand load1 "load 2>&1" "^\#" n
 
+testCommand advance1 "advance 2>&1" "^\#" n
+testCommand actions1 "actions 2>&1" "^\#" n
+
+testCommand deactivate1 "deactivate 2>&1" "^\#" n
+testCommand activate1 "activate 2>&1" "^\#" n
+
 ###########################################
-echo "WARNING: ignoring remainder of tests"
-exit $return_code
+#!echo "WARNING: ignoring remainder of tests"
+#!exit $return_code
 ###########################################
-
-testCommand load1_1 "test-1.sh 2>&1" "^\#" n
-testOutput out1 test-1.out '^\#' n
-
-testCommand advance1_1 "test-2.sh 2>&1" "^\#" n
-testOutput out2 test-2.out '^\#' n
-
 
 
 
@@ -93,4 +120,3 @@ fi
 # Don't move or remove! 
 cd $origdir
 exit $return_code
-

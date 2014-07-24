@@ -14,12 +14,12 @@ def clear_db(r):
     logging.info(': Resettimg everything related to data queue in redis DB.')
     pl = r.pipeline()
     ids = r.smembers(rids)
-    pl.watch(rids,aq,aqs,iq,*ids)
+    pl.watch(rids,aq,aqs,iq,iqs,*ids)
     pl.multi()
     
     if r.scard(rids) > 0:
         pl.delete(*ids)
-    pl.delete(aq,aqs,iq,rids)
+    pl.delete(aq,aqs,iq,iqs,rids)
     if pl.get(actionP) == None:
         pl.set(actionP,'on')
     if pl.get(readP) == None:
@@ -55,7 +55,7 @@ Socket READ enabled:   %(readP)s [%(readPkey)s]
 def list_queue(r,which):
     if which == 'records':
         print(('Records (%d):'  % (r.scard(rids),)))
-        for ridB in r.smembers(rids):
+        for ridB in sorted(r.smembers(rids)):
             rid = ridB.decode()
             rec = utils.decode_dict(r.hgetall(rid))
             kvlist = sorted(rec.items(), key=lambda x: x[0])
@@ -270,6 +270,8 @@ def main():
 
     if args.action is not None:
         r.set(actionP,args.action)
+        if args.action == 'off':
+            r.lpush(dummy,'ignore')
     if args.read is not None:
         r.set(readP,args.read)
 

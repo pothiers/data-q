@@ -33,9 +33,19 @@ def process_queue_forever(r, cfg_file,delay=1.0):
         if r.get(actionP) == b'off':
             time.sleep(delay)
             continue
-
-        (keynameB,ridB) = r.brpop([aq]) # BLOCKING pop (over list of keys)
-        keyname = keynameB.decode()
+        
+        # ALERT: being "clever" here!
+        #
+        # If actionP was turned on, and the queue isn't being filled,
+        # we will eventually pop everything from the queue and block.
+        # But then if actionP is turned OFF, we don't know yet because
+        # we are still blocking.  So next queue item will sneak by.
+        # Probably unimportant on long running system, but plays havoc
+        # with testing. To resolve, on setting actionP to off, we push
+        # to dummy to clear block.
+        (keynameB,ridB) = r.brpop([dummy,aq]) # BLOCKING pop (over list of keys)
+        if keynameB.decode() == dummy:
+            continue
         rid = ridB.decode()
 
         pl = r.pipeline()
