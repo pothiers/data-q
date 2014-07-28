@@ -5,10 +5,6 @@ Read data records from socket and push to queue.
 The checksum provided for each data record is used as an ID.  If the
 checksum of two records is the same, we assume the data is. So we can
 throw one of them away.
-
-TODO:
-- setup as daemon
-- trap for everything bad and do something good
 '''
 
 import os, sys, string, argparse, logging

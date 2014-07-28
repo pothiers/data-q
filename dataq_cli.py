@@ -4,7 +4,9 @@ Provide commands (switches) that can be run to modify or display the
 data queue.
 '''
 
-import os, sys, string, argparse, logging
+import os, sys, string, argparse
+import logging
+import logging.handlers
 import pprint
 import redis
 from dbvars import *
@@ -254,14 +256,21 @@ def main():
     args = parser.parse_args()
 
 
-    log_level = getattr(logging, args.loglevel.upper(), None)
-    if not isinstance(log_level, int):
+    numeric_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(numeric_level, int):
         parser.error('Invalid log level: %s' % args.loglevel) 
-    logging.basicConfig(level = log_level,
+    logging.basicConfig(level = numeric_level,
                         format='%(levelname)s %(message)s',
-                        datefmt='%m-%d %H:%M'
+                        datefmt='%m-%d %H:%M',
                         )
-    logging.debug('Debug output is enabled!!')
+    my_logger = logging.getLogger('dataq')
+    logfilename='/var/log/dataq.log'
+    handler = logging.handlers.RotatingFileHandler(logfilename,
+                                                   maxBytes=20, #!!!
+                                                   backupCount=9,
+                                                   )
+    my_logger.addHandler(handler)
+    my_logger.debug('Debug output is enabled!!')
     ############################################################################
 
     r = redis.StrictRedis()

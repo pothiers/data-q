@@ -43,6 +43,10 @@ function feed () {
     dataq_cli.py  --list active --summary
 }
 
+function dump () {
+    dataq_cli.py --dump q1.dump --summary
+}
+
 function load () {
     dataq_cli.py  --load q2.dat --summary
     dataq_cli.py  --list active --summary
@@ -87,7 +91,7 @@ echo ""
 
 testCommand feed1 "feed 2>&1" "^\#" n
 
-testCommand dump1 "dataq_cli.py --dump q1.dump --summary" "^\#" n
+testCommand dump1 "dump  2>&1" "^\#" n
 testOutput out1 q1.dump '^\#' n
 
 testCommand load1 "load 2>&1" "^\#" n

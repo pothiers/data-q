@@ -19,7 +19,7 @@ import time
 def process_queue_forever(r, cfg_file,delay=1.0): 
     if cfg_file is None:
         cfg = dict(
-            maximum_errors_per_record = 3, 
+            maximum_errors_per_record = 0, 
             action_name = "echo00",
             )
     else:
@@ -65,7 +65,7 @@ def process_queue_forever(r, cfg_file,delay=1.0):
             cnt = pl.hincrby(ecnt,rid)
             print('Error count for "%s"=%d'%(rid,cnt))
             if cnt > cfg['maximum_errors_per_record']:
-                pl.lpush(iq,rid)  # kept failing: move to Inactive queue
+                pl.lpush(iq,rid)  # action kept failing: move to Inactive queue
                 logging.warning(
                     ': Failed to run action "%s" on record (%s) %d times.'
                     +' Moving it to the Inactive queue',

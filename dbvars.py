@@ -12,5 +12,6 @@ ecnt = 'errorcnt'      # errorcnt[id] = cnt; number of Action errors against ID
 actionP = 'actionFlag' # on|off
 readP = 'readFlag'     # on|off
 
-dummy = 'dummy_aq' # List used to clear block of AQ when needed on change of actionFlag
+dummy = 'dummy_aq' # List used to clear block of AQ when needed on change
+                   # of actionFlag
 
