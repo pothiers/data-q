@@ -266,7 +266,7 @@ def main():
     my_logger = logging.getLogger('dataq')
     logfilename='/var/log/dataq.log'
     handler = logging.handlers.RotatingFileHandler(logfilename,
-                                                   maxBytes=20, #!!!
+                                                   maxBytes=1e4,
                                                    backupCount=9,
                                                    )
     my_logger.addHandler(handler)
@@ -279,8 +279,7 @@ def main():
 
     if args.action is not None:
         r.set(actionP,args.action)
-        if args.action == 'off':
-            r.lpush(dummy,'ignore')
+        r.lpush(dummy,'ignore')
     if args.read is not None:
         r.set(readP,args.read)
 
