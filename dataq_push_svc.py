@@ -7,19 +7,32 @@ checksum of two records is the same, we assume the data is. So we can
 throw one of them away.
 '''
 
-import os, sys, string, argparse, logging
-import random
-import redis
+import argparse
+import logging
 import socketserver
+
+import redis
+
+import defaultCfg
 from dbvars import *
 
 class DataRecordTCPHandler(socketserver.StreamRequestHandler):
 
     def handle(self):
         r = self.server.r
+        cfg = self.server.cfg
         if r.get(readP) == 'off':
             return False
 
+        if r.llen(aq) > cfg['maxium_queue_size']:
+            logging.error('Queue is full! '
+                          + 'Turning off read from socket. '
+                          + 'Disabling push to queue.  '
+                          + 'To reenable: "dataq_cli --read on"  '
+                          )
+            r.set(readP,'off')
+                        
+            
         self.data = self.rfile.readline().strip().decode()
         logging.debug('Data line read from socket=%s',self.data)
         (fname,checksum,size) = self.data.split() #! specific to our APP
@@ -44,7 +57,6 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
 
 ##############################################################################
 def main():
-    #! print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='Read data from socket and push to Data Queue',
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
@@ -54,6 +66,9 @@ def main():
                         default='localhost')
     parser.add_argument('--port',  help='Port to bind to',
                         type=int, default=9988)
+    parser.add_argument('--cfg', 
+                        help='Configuration file',
+                        type=argparse.FileType('r') )
 
 
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
@@ -72,12 +87,14 @@ def main():
     logging.debug('Debug output is enabled!!')
     ######################################################################
 
+    cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
     server = socketserver.TCPServer((args.host, args.port),
                                     DataRecordTCPHandler)
 
     # Activate the server; this will keep running until you
     # interrupt the program with Ctrl-C
     server.r = redis.StrictRedis()
+    server.cfg = cfg
     server.serve_forever()
 
 if __name__ == '__main__':

@@ -1,34 +1,65 @@
 #! /usr/bin/env python
 '''\ 
+Read data records from socket and push to queue. 
 Pop records from queue and apply action. 
+
+The checksum provided for each data record is used as an ID.  If the
+checksum of two records is the same, we assume the data is. So we 
+throw one of them away.
 '''
 
-# Probably could use asyncio to good use here.  Didn't know about it
-# when I started and maybe our case is easy enuf that it doesn't
-# matter. But we do a loop (while True) that smacks of an event loop!!!
-
-
+import os
+import sys
+import string
 import argparse
 import logging
 import json
 import time
+import random
+import socketserver
+import asyncio
 
 import redis
 
-import utils
-import defaultCfg
 from dbvars import *
 from actions import *
+import utils
 
-def process_queue_forever(r, cfg,delay=1.0): 
-    action_name = cfg['action_name']
-    action = action_lut[action_name]
+@asyncio.coroutine
+def pushq(r, host, port, delay=1):
+    if r.get(readP) == 'off':
+        return false
+    reader,writer = yield from asyncio.open_connection(host,port)
+    while True:
+        data = reader.readline()
+        (fname,checksum,size) = data.split() # specific to our APP!!!
+        rec = dict(list(zip(['filename','size'],[fname,size]))) 
 
+        pl = r.pipeline()
+        pl.watch(rids,aq,aqs,checksum)
+        pl.multi()
+        if r.sismember(aqs,checksum) == 1:
+            logging.warning(': Record for %s is already in queue.' 
+                            +' Ignoring duplicate.', checksum)
+            writer.write('Ignored ID=%s'%checksum)
+        else:
+            # add to DB
+            pl.sadd(aqs,checksum) 
+            pl.lpush(aq,checksum)
+            pl.sadd(rids,checksum) 
+            pl.hmset(checksum,rec)
+            pl.save()    
+            writer.write(bytes('Pushed ID=%s'%checksum,'UTF-8'))
+        pl.execute()
+        yield from asyncio.sleep(delay)
+
+@asyncio.coroutine
+def popq(r, action, delay=1):
     errorCnt = 0
     logging.debug('Process Queue')
     while True:
         if r.get(actionP) == b'off':
-            time.sleep(delay)
+            yield from asyncio.sleep(delay)
             continue
         
         # ALERT: being "clever" here!
@@ -74,14 +105,16 @@ def process_queue_forever(r, cfg,delay=1.0):
                 pl.lpush(aq,rid) # failed: got to the end of the line
         pl.save()    
         pl.execute()
+        yield from asyncio.sleep(delay)
+
+    
 
 ##############################################################################
-
-
 def main():
+    #! print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        description='Data Queue service',
-        epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
+        description='Read data from socket and push to Data Queue',
+        epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
         )
 
     parser.add_argument('--host',  help='Host to bind to',
@@ -107,10 +140,35 @@ def main():
                         datefmt='%m-%d %H:%M'
                         )
     logging.debug('Debug output is enabled!!')
-    ###########################################################################
+    ######################################################################
 
-    cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
-    process_queue_forever(redis.StrictRedis(), cfg)
+    #! server = socketserver.TCPServer((args.host, args.port),
+    #!                                 DataRecordTCPHandler)
+    #! 
+    #! # Activate the server; this will keep running until you
+    #! # interrupt the program with Ctrl-C
+    #! server.r = redis.StrictRedis()
+    #! server.serve_forever()
+
+    if args.cfg is None:
+        cfg = dict(
+            maximum_errors_per_record = 0, 
+            action_name = "echo00",
+            )
+    else:
+        cfg = json.load(cfg_file)
+    action_name = cfg['action_name']
+    action = action_lut[action_name]
+
+    r = redis.StrictRedis()
+    loop = asyncio.get_event_loop()
+    tasks = [
+            loop.create_task(pushq(r, args.host, args.port)),
+            loop.create_task(popq(r,action)),
+            ]
+    #!loop.run_forever()
+    loop.run_until_complete(asyncio.wait(tasks))
+    loop.close()
 
 if __name__ == '__main__':
     main()

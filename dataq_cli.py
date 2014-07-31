@@ -4,13 +4,17 @@ Provide commands (switches) that can be run to modify or display the
 data queue.
 '''
 
-import os, sys, string, argparse
+import argparse
 import logging
 import logging.handlers
 import pprint
+
 import redis
+
+import defaultCfg
 from dbvars import *
 import utils
+
 
 def clear_db(r):
     logging.info(': Resettimg everything related to data queue in redis DB.')
@@ -206,7 +210,6 @@ def activate_range(r,first,last):
 
 
 def main():
-    #!print('EXECUTING: %s\n\n' % (string.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='Modify or display the data queue',
         epilog='EXAMPLE: %(prog)s --summary'
@@ -215,19 +218,25 @@ def main():
                         default='localhost')
     parser.add_argument('--port',  help='Port to bind to',
                         type=int, default=9988)
-    parser.add_argument('--summary',  help='Show summary of queue contents.',
+    parser.add_argument('--cfg', 
+                        help='Configuration file',
+                        type=argparse.FileType('r') )
+
+    parser.add_argument('--summary', '-s',
+                        help='Show summary of queue contents.',
                         action='store_true' )
-    parser.add_argument('--info',  help='Show info about Redis server.',
+    parser.add_argument('--info',  '-i', help='Show info about Redis server.',
                         action='store_true' )
-    parser.add_argument('--list',  help='List queue',
+    parser.add_argument('--list', '-l',
+                        help='List queue',
                         choices=['active','inactive','records'],
                         )
-    parser.add_argument('--action',  
+    parser.add_argument('--action', '-a',  
                         help='Turn on/off running actions on queue records.',
                         default=None,
                         choices=['on','off'],
                         )
-    parser.add_argument('--read',  
+    parser.add_argument('--read',  '-r',  
                         help='Turn on/off reading socket and pushing to queue.',
                         default=None,
                         choices=['on','off'],
@@ -235,16 +244,19 @@ def main():
     parser.add_argument('--clear',  help='Delete queue related data from DB',
                         action='store_true' )
 
-    parser.add_argument('--dump', help='Dump copy of queue into this file',
+    parser.add_argument('--dump', 
+                        help='Dump copy of queue into this file',
                         type=argparse.FileType('w') )
     parser.add_argument('--load', 
                         help='File of data records to load into queue',
                         type=argparse.FileType('r') )
 
-    parser.add_argument('--advance',  help='Move records to end of queue.',
+    parser.add_argument('--advance', 
+                        help='Move records to end of queue.',
                         nargs=2 )
 
-    parser.add_argument('--deactivate',  help='Move records to INACTIVE',
+    parser.add_argument('--deactivate',  
+                        help='Move records to INACTIVE',
                         nargs=2 )
     parser.add_argument('--activate',  help='Move records to ACTIVE',
                         nargs=2 )
@@ -263,7 +275,7 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M',
                         )
-    my_logger = logging.getLogger('dataq')
+    my_logger = logging.getLogger('dataq.cli')
     logfilename='/var/log/dataq.log'
     handler = logging.handlers.RotatingFileHandler(logfilename,
                                                    maxBytes=1e4,
@@ -272,6 +284,7 @@ def main():
     my_logger.addHandler(handler)
     my_logger.debug('Debug output is enabled!!')
     ############################################################################
+    cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
 
     r = redis.StrictRedis()
     if args.clear:
