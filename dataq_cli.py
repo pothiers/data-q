@@ -5,19 +5,24 @@ data queue.
 '''
 
 import argparse
+import sys
 import logging
+import logging.config
 import logging.handlers
 import pprint
+import json
 
 import redis
 
 import defaultCfg
 from dbvars import *
 import utils
+from loggingCfg import *
 
+dq_logger = logging.getLogger('dataq.cli')
 
 def clear_db(r):
-    logging.info(': Resettimg everything related to data queue in redis DB.')
+    dq_logger.info(': Resettimg everything related to data queue in redis DB.')
     pl = r.pipeline()
     ids = r.smembers(rids)
     pl.watch(rids,aq,aqs,iq,iqs,*ids)
@@ -103,9 +108,9 @@ def load_queue(r, infile):
         pl = r.pipeline()
         pl.watch(rids,aq,aqs,checksum)
         pl.multi()
-        logging.debug(': Read line with id=%s',checksum)
+        dq_logger.debug(': Read line with id=%s',checksum)
         if r.sismember(aqs,checksum) == 1:
-            logging.warning(': Record for %s is already in queue.' 
+            dq_logger.warning(': Record for %s is already in queue.' 
                             +' Ignoring duplicate.', checksum)
             warnings += 1
         else:
@@ -136,7 +141,7 @@ def advance_range(r,first,last):
 
     ids = [b.decode() for b in r.lrange(aq,0,-1)]
     selected = get_selected(ids,first,last)
-    logging.debug('Selected records = %s',selected)
+    dq_logger.debug('Selected records = %s',selected)
 
     # move selected IDs to the tail
     for rid in selected:
@@ -157,11 +162,11 @@ def deactivate_range(r,first,last):
 
     ids = [b.decode() for b in r.lrange(aq,0,-1)]
     selected = get_selected(ids,first,last)
-    logging.debug('Selected records = %s',selected)
+    dq_logger.debug('Selected records = %s',selected)
    
     for rid in selected:
         if r.sismember(iqs,rid) == 1:
-            logging.warning(': Record for %s is already in inactive queue.' 
+            dq_logger.warning(': Record for %s is already in inactive queue.' 
                             +' Ignoring duplicate.', rid)
             warnings += 1
         else:
@@ -184,15 +189,15 @@ def activate_range(r,first,last):
     pl.multi()
 
     ids = [b.decode() for b in r.lrange(iq,0,-1)]
-    logging.debug('ids = %s',ids)
+    dq_logger.debug('ids = %s',ids)
     selected = get_selected(ids,first,last)
 
-    logging.debug('Selected records (first,last) = (%s,%s) %s',
+    dq_logger.debug('Selected records (first,last) = (%s,%s) %s',
                   first,last, selected)
    
     for rid in selected:
         if r.sismember(aqs,rid) == 1:
-            logging.warning(': Record for %s is already in active queue.' 
+            dq_logger.warning(': Record for %s is already in active queue.' 
                             +' Ignoring duplicate.', rid)
             warnings += 1
         else:
@@ -271,18 +276,24 @@ def main():
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(numeric_level, int):
         parser.error('Invalid log level: %s' % args.loglevel) 
-    logging.basicConfig(level = numeric_level,
-                        format='%(levelname)s %(message)s',
-                        datefmt='%m-%d %H:%M',
-                        )
-    my_logger = logging.getLogger('dataq.cli')
-    logfilename='/var/log/dataq.log'
-    handler = logging.handlers.RotatingFileHandler(logfilename,
-                                                   maxBytes=1e4,
-                                                   backupCount=9,
-                                                   )
-    my_logger.addHandler(handler)
-    my_logger.debug('Debug output is enabled!!')
+    logging.config.dictConfig(LOG_SETTINGS)
+
+
+
+    #!logging.basicConfig(level = numeric_level,
+    #!                    format='%(levelname)s %(message)s',
+    #!                    datefmt='%m-%d %H:%M',
+    #!                    )
+    #!logfilename='/var/log/dataq.log'
+    #!handler = logging.handlers.RotatingFileHandler(logfilename,
+    #!                                               maxBytes=1e4,
+    #!                                               backupCount=9,
+    #!                                               )
+    #!dq_logger.addHandler(handler)
+    dq_logger.debug('Debug output is enabled!!')
+    dq_logger.info('EXECUTING: %s',' '.join(sys.argv))
+
+
     ############################################################################
     cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
 

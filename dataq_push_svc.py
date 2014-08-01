@@ -10,6 +10,7 @@ throw one of them away.
 import argparse
 import logging
 import socketserver
+import json
 
 import redis
 

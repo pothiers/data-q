@@ -37,7 +37,7 @@ function setup () {
 }
 
 function feed () {
-    dataq_cli.py  --clear --action on
+    dataq_cli.py  --clear --action on --read on
     dataq_cli.py  --action off --summary
     test_feeder.py q1.dat 
     dataq_cli.py  --list active --summary
