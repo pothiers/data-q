@@ -1,0 +1,837 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Data Queue design</title>
+<!-- 2014-08-01 Fri 14:24 -->
+<meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta  name="generator" content="Org-mode" />
+<meta  name="author" content="NOAO" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { color: green; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  pre.src-sh:before    { content: 'sh'; }
+  pre.src-bash:before  { content: 'sh'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-R:before     { content: 'R'; }
+  pre.src-perl:before  { content: 'Perl'; }
+  pre.src-java:before  { content: 'Java'; }
+  pre.src-sql:before   { content: 'SQL'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.right  { text-align: center;  }
+  th.left   { text-align: center;   }
+  th.center { text-align: center; }
+  td.right  { text-align: right;  }
+  td.left   { text-align: left;   }
+  td.center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara:nth-child(2) { display: inline; }
+  .footpara { display: block; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  /*]]>*/-->
+</style>
+
+<script type="text/javascript" src="http://orgmode.org/org-info.js">
+/**
+ *
+ * @source: http://orgmode.org/org-info.js
+ *
+ * @licstart  The following is the entire license notice for the
+ *  JavaScript code in http://orgmode.org/org-info.js.
+ *
+ * Copyright (C) 2012-2013 Free Software Foundation, Inc.
+ *
+ *
+ * The JavaScript code in this tag is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * General Public License (GNU GPL) as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.  The code is distributed WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+ *
+ * As additional permission under GNU GPL version 3 section 7, you
+ * may distribute non-source (e.g., minimized or compacted) forms of
+ * that code without the copy of the GNU GPL normally required by
+ * section 4, provided you include this license notice and a URL
+ * through which recipients can access the Corresponding Source.
+ *
+ * @licend  The above is the entire license notice
+ * for the JavaScript code in http://orgmode.org/org-info.js.
+ *
+ */
+</script>
+
+<script type="text/javascript">
+
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+
+<!--/*--><![CDATA[/*><!--*/
+org_html_manager.set("TOC_DEPTH", "3");
+org_html_manager.set("LINK_HOME", "");
+org_html_manager.set("LINK_UP", "");
+org_html_manager.set("LOCAL_TOC", "1");
+org_html_manager.set("VIEW_BUTTONS", "0");
+org_html_manager.set("MOUSE_HINT", "underline");
+org_html_manager.set("FIXED_TOC", "0");
+org_html_manager.set("TOC", "1");
+org_html_manager.set("VIEW", "showall");
+org_html_manager.setup();  // activate after the parameters are set
+/*]]>*///-->
+</script>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Data Queue design</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#sec-1">1. Overview</a></li>
+<li><a href="#sec-2">2. Requirements</a>
+<ul>
+<li><a href="#sec-2-1">2.1. General</a></li>
+<li><a href="#sec-2-2">2.2. Functional</a></li>
+<li><a href="#sec-2-3">2.3. Commands</a></li>
+<li><a href="#sec-2-4">2.4. Support input format</a></li>
+<li><a href="#sec-2-5">2.5. Support these Actions (processing of a record)</a></li>
+</ul>
+</li>
+<li><a href="#sec-3">3. Anti-requirements</a></li>
+<li><a href="#sec-4">4. As-Built Design <span class="timestamp-wrapper"><span class="timestamp">&lt;2014-07-25 Fri&gt;</span></span></a>
+<ul>
+<li><a href="#sec-4-1">4.1. Purpose</a></li>
+<li><a href="#sec-4-2">4.2. Overview</a></li>
+<li><a href="#sec-4-3">4.3. Components</a>
+<ul>
+<li><a href="#sec-4-3-1">4.3.1. dataq_push_svc.py</a></li>
+<li><a href="#sec-4-3-2">4.3.2. dataq_pop_svc.py</a></li>
+<li><a href="#sec-4-3-3">4.3.3. dataq_cli.py</a></li>
+</ul>
+</li>
+<li><a href="#sec-4-4">4.4. Persistent data structures</a></li>
+</ul>
+</li>
+<li><a href="#sec-5">5. Assumptions</a></li>
+<li><a href="#sec-6">6. Use Cases</a>
+<ul>
+<li><a href="#sec-6-1">6.1. Running smoothly</a></li>
+<li><a href="#sec-6-2">6.2. Systemic Action Failures</a></li>
+<li><a href="#sec-6-3">6.3. Queue gets exceedingly large</a></li>
+<li><a href="#sec-6-4">6.4. Power failure brings down machine that was running Queue</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> Overview</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Software task to process a data-file list as a queue.  Focus on resiliency.
+</p>
+
+<p>
+NOTE: This file includes some org mode src blocks. Some are for using
+graphviz to generate figure, some to use SH to run programs described
+here to get their usage documentation. To get good export, emacs must
+be configured appropriately.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2"><span class="section-number-2">2</span> Requirements</h2>
+<div class="outline-text-2" id="text-2">
+</div><div id="outline-container-sec-2-1" class="outline-3">
+<h3 id="sec-2-1"><span class="section-number-3">2.1</span> General</h3>
+<div class="outline-text-3" id="text-2-1">
+<ol class="org-ol">
+<li>System shall not loose track of any data pushed into it, even in the
+case of hardware or software faults that terminate the process. 
+Preserve state if queue process crashes.
+</li>
+<li>Required actions shall be performed via a single command-line
+request.
+</li>
+<li>Queue shall reconnect to data source(s) if network goes down and up.
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-sec-2-2" class="outline-3">
+<h3 id="sec-2-2"><span class="section-number-3">2.2</span> Functional</h3>
+<div class="outline-text-3" id="text-2-2">
+<ul class="org-ul">
+<li>Log all errors and warnings from queue processing to /var/log
+</li>
+<li>Start data queue process
+</li>
+<li>Stop data queue process
+</li>
+<li>Push record from TCP socket onto queue
+</li>
+<li>Pop record from queue and run action against it
+</li>
+<li>Configure action to be run upon pop for a specific queue
+</li>
+<li>List everything in Active Queue and Inactive Queue (the "stash")
+</li>
+<li>Move selected items from active queue to inactive queue
+</li>
+<li>Delete selected items from active or inactive queue
+</li>
+<li>Move selected items in active queue to the tail (next to pop)
+</li>
+<li>Detect attempt to push a duplicate record onto the queue and ignore
+duplicate. (do not add to queue or process it, emit warning)
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-3" class="outline-3">
+<h3 id="sec-2-3"><span class="section-number-3">2.3</span> Commands</h3>
+<div class="outline-text-3" id="text-2-3">
+<ol class="org-ol">
+<li>Disable processing from queue (pop and action)
+</li>
+<li>Enable processing from queue (pop and action)
+</li>
+<li>Delete &lt;queue&gt; &lt;first-id&gt; &lt;last-id&gt;
+</li>
+<li>Deactivate &lt;first-id&gt; &lt;last-id&gt;
+</li>
+<li>Activate &lt;first-id&gt; &lt;last-id&gt;
+</li>
+<li>List content of queue
+</li>
+<li>Advance &lt;first-id&gt; &lt;last-id&gt; (to tail of active queue)
+</li>
+</ol>
+
+<p>
+&lt;first-id&gt;, &lt;last-id&gt; Are the checksums (ids) of the start and end of
+a range of items in a queue.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-2-4" class="outline-3">
+<h3 id="sec-2-4"><span class="section-number-3">2.4</span> Support input format</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+Read records from TCP that contain <b>typed</b> fields:
+</p>
+<ul class="org-ul">
+<li>full file path [STRING]
+</li>
+<li>checksum [STRING] (assumed to be a unique identifier for a record)
+</li>
+<li>size [INTEGER]
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-2-5" class="outline-3">
+<h3 id="sec-2-5"><span class="section-number-3">2.5</span> Support these Actions (processing of a record)</h3>
+<div class="outline-text-3" id="text-2-5">
+<ul class="org-ul">
+<li>network move
+</li>
+<li>disk storage
+</li>
+<li>archive ingest
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3"><span class="section-number-2">3</span> Anti-requirements</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+These are NOT requirements.  We explicitly considered but rejected
+them.
+</p>
+<ul class="org-ul">
+<li>priority queue; not necessary and more computationaly expensive. Not
+supported by Redis. (but python does have built in heapq)
+</li>
+<li>keep multiple records as distinct if they have same checksum but
+records are not identical; "never" happens per analysis of postgres DB
+</li>
+<li>specify records by position in queue; position changes, not
+supported by Redis
+</li>
+<li>Use log4j format configuration for logging; native python doesn't
+support it, developement more pythonic to use native, if its a
+bother to have Puppet deal with two kinds of configuration files, we
+will write a converter
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-sec-4" class="outline-2">
+<h2 id="sec-4"><span class="section-number-2">4</span> As-Built Design <span class="timestamp-wrapper"><span class="timestamp">&lt;2014-07-25 Fri&gt;</span></span></h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-sec-4-1" class="outline-3">
+<h3 id="sec-4-1"><span class="section-number-3">4.1</span> Purpose</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+The purpose of this document is to describe a software component
+(data-queue) in enough detail to be helpful for a developer who wishes
+to modify it.
+</p>
+
+<p>
+The purpose of the data-queue is to queue data while waiting for another
+service to process it.  The types of processing include:
+</p>
+<ul class="org-ul">
+<li>transfer over the network to another computer or site
+</li>
+<li>register data with the mass store
+</li>
+<li>ingest the data into the archive
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-sec-4-2" class="outline-3">
+<h3 id="sec-4-2"><span class="section-number-3">4.2</span> Overview</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+The deployed system contains 4 components:
+</p>
+<ol class="org-ol">
+<li>dataq_push_svc.py
+Read records of TCP socket. Push record onto queue
+</li>
+<li>dataq_pop_svc.py 
+Pop records from queue. Run action against record.
+</li>
+<li>dataq_cli.py
+Provides commands for diagnostics and manipulating queue
+</li>
+<li>redis: <a href="http://redis.io/">http://redis.io/</a>  (key-value store)
+</li>
+</ol>
+
+<p>
+There is also a test program (test_feeder.py) used to simulate the
+expect input via TCP.
+</p>
+
+<p>
+No init system service has been created yet. Such a script needs to
+start both push and pop svc programs.  Maybe it should start redis
+also (or that might be started elsewhere).
+</p>
+
+<p>
+Here is a diagram showing the data flow. 
+</p>
+
+
+<div class="figure">
+<p><img src="figures/design-diagram.png" alt="design-diagram.png" />
+</p>
+</div>
+
+
+<p>
+<b>NB:</b> It would be a good idea to use python asyncio to allow
+ dataq_(push,pop)_svc.py to be combined into a single executable.
+ Essentially, we would use an event loop to allow push and pop to
+ happen "in parallel".  Key features are documented but not available
+ until Python 3.4.2 (current available is 3.4.1).
+</p>
+</div>
+</div>
+<div id="outline-container-sec-4-3" class="outline-3">
+<h3 id="sec-4-3"><span class="section-number-3">4.3</span> Components</h3>
+<div class="outline-text-3" id="text-4-3">
+</div><div id="outline-container-sec-4-3-1" class="outline-4">
+<h4 id="sec-4-3-1"><span class="section-number-4">4.3.1</span> dataq_push_svc.py</h4>
+<div class="outline-text-4" id="text-4-3-1">
+<p>
+Read text from given (or defaulted) host/port. Push the ID (checksum)
+from each record onto active queue and store the remaining part of
+the record (using hmset) using the ID as a key.
+</p>
+
+<p>
+We assume that if the ID of two records is the same, the data is
+too. In that case, we throw one of them away.  The same data can still
+go through the queue multiple times, but the queue cannot contain
+duplicates.  For an action on the same record to be performed twice,
+would have to be processed once before it shows up again at the head
+of the queue.
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-sh">.  ~/PYTHON_ENV/bin/activate
+~/sandbox/data-q/dataq_push_svc.py --help
+</pre>
+</div>
+<pre class="example">
+usage: dataq_push_svc.py [-h] [--host HOST] [--port PORT] [--cfg CFG]
+                         [--loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}]
+
+Read data from socket and push to Data Queue
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --host HOST           Host to bind to
+  --port PORT           Port to bind to
+  --cfg CFG             Configuration file
+  --loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}
+                        Kind of diagnostic output
+
+EXAMPLE: dataq_push_svc.py --host localhost --port 9988
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-3-2" class="outline-4">
+<h4 id="sec-4-3-2"><span class="section-number-4">4.3.2</span> dataq_pop_svc.py</h4>
+<div class="outline-text-4" id="text-4-3-2">
+<p>
+Pop a record ID from the active queue (blocking if its empty).  Get
+associated record from redis give ID as key. Syncronously run each
+action against each record. If an action fails, put the ID back at the
+top of the queue so it will run later. Only allow N failures.  The
+specific action used is determined by config file when this program is
+started.
+</p>
+
+<p>
+The list "dummy_aq" is used to allow actionP to be toggled while
+blocked waiting on an empty queue.  Without such a mechanism, we can
+leak one record through the queue after actionP changed to "off".
+</p>
+
+<p>
+Failed actions are automatically rerun. The max number of times it
+will be tried is a configuration parameter
+("maximum_errors_per_record").  If an action for a particular id fails
+more than this, it is moved to the inactive queue.  To disable any
+retry, set the parameter to zero. (the default)
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-sh">~/sandbox/data-q/dataq_pop_svc.py --help
+</pre>
+</div>
+<pre class="example">
+usage: dataq_pop_svc.py [-h] [--host HOST] [--port PORT] [--cfg CFG]
+                        [--loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}]
+
+Data Queue service
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --host HOST           Host to bind to
+  --port PORT           Port to bind to
+  --cfg CFG             Configuration file
+  --loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}
+                        Kind of diagnostic output
+
+EXAMPLE: dataq_pop_svc.py --loglevel DEBUG &amp;
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-4-3-3" class="outline-4">
+<h4 id="sec-4-3-3"><span class="section-number-4">4.3.3</span> dataq_cli.py</h4>
+<div class="outline-text-4" id="text-4-3-3">
+<p>
+This program provides commands for diagnostics and manipulating the 
+queue. Its where most of the code is. Multiple switches can be given
+on the command line, but the order in which their associated functions
+will be done is fixed internally (switch order doesn't affect it).
+</p>
+
+<p>
+I expect we will need more commands here.  I'm open to renaming the
+commands too.  
+</p>
+
+<p>
+The current set of switches require 0, 1, or 2 additional parameters. 
+</p>
+
+<p>
+Provides commands to modify queue and queue processing:
+</p>
+<ol class="org-ol">
+<li><code>[X]</code> Summary of queues to stdout
+</li>
+<li><code>[X]</code> LIST current contents of queue
+</li>
+<li><code>[X]</code> ACTION(True|False): un/suspend queue action processing (no pop, no actions)
+</li>
+<li><code>[X]</code> READ(True|False): un/suspend queue socket read (no push, no socket read)
+</li>
+<li><code>[X]</code> CLEAR (empty DB without doing any actions)
+</li>
+<li><code>[X]</code> DUMP a copy of queue into file
+</li>
+<li><code>[X]</code> LOAD file into queue
+</li>
+<li><code>[X]</code> ADVANCE range of records (given by start/stop id) to front of line
+</li>
+<li><code>[X]</code> DEACTIVATE range of records (move ACTIVE to INACTIVE)
+</li>
+<li><code>[X]</code> ACTIVATE range of records (move INACTIVE to ACTIVE)
+</li>
+</ol>
+
+<div class="org-src-container">
+
+<pre class="src src-sh">~/sandbox/data-q/dataq_cli.py --help
+</pre>
+</div>
+<pre class="example">
+usage: dataq_cli.py [-h] [--host HOST] [--port PORT] [--cfg CFG] [--summary]
+                    [--info] [--list {active,inactive,records}]
+                    [--action {on,off}] [--read {on,off}] [--clear]
+                    [--dump DUMP] [--load LOAD] [--advance ADVANCE ADVANCE]
+                    [--deactivate DEACTIVATE DEACTIVATE]
+                    [--activate ACTIVATE ACTIVATE]
+                    [--loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}]
+
+Modify or display the data queue
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --host HOST           Host to bind to
+  --port PORT           Port to bind to
+  --cfg CFG             Configuration file
+  --summary, -s         Show summary of queue contents.
+  --info, -i            Show info about Redis server.
+  --list {active,inactive,records}, -l {active,inactive,records}
+                        List queue
+  --action {on,off}, -a {on,off}
+                        Turn on/off running actions on queue records.
+  --read {on,off}, -r {on,off}
+                        Turn on/off reading socket and pushing to queue.
+  --clear               Delete queue related data from DB
+  --dump DUMP           Dump copy of queue into this file
+  --load LOAD           File of data records to load into queue
+  --advance ADVANCE ADVANCE
+                        Move records to end of queue.
+  --deactivate DEACTIVATE DEACTIVATE
+                        Move records to INACTIVE
+  --activate ACTIVATE ACTIVATE
+                        Move records to ACTIVE
+  --loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}
+                        Kind of diagnostic output
+
+EXAMPLE: dataq_cli.py --summary
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-4-4" class="outline-3">
+<h3 id="sec-4-4"><span class="section-number-3">4.4</span> Persistent data structures</h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+This is what we store in Redis.  Names on the left are the redis keys.
+</p>
+
+<dl class="org-dl">
+<dt> activeq </dt><dd>List of IDs. The active queue.  New stuff goes on left,
+next record to process comes off the right.
+</dd>
+<dt> activeq_set </dt><dd>SET version of activeq so we can tell if an id is
+already on the active list.
+</dd>
+<dt> inactiveq </dt><dd>List of IDs. The inactive list. Anything from the input
+stream with unique id that doesn't ultimately get acted
+upon as it comes off the activeq goes here.
+</dd>
+<dt> inactiveq_set </dt><dd>SET version of inactiveq so we can tell if an id is
+already on the inactive list.
+</dd>
+<dt> record_ids </dt><dd>Set of IDs used as keys to a record (for both
+active/inactive queue). For each id there is an
+hmset(id,rec) to map id to record.
+</dd>
+<dt> errorcnt </dt><dd>errorcnt[id] = cnt; number of Action errors against ID
+</dd>
+<dt> actionFlag </dt><dd>(on|off) Process actions?
+</dd>
+<dt> readFlag </dt><dd>(on|off) Read socket and push to queue?
+</dd>
+<dt> dummy_aq </dt><dd>List used to clear block of AQ when needed on change of
+actionFlag
+</dd>
+</dl>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-5" class="outline-2">
+<h2 id="sec-5"><span class="section-number-2">5</span> Assumptions</h2>
+<div class="outline-text-2" id="text-5">
+<ul class="org-ul">
+<li>"Queue processing is not the bottle-neck"
+<ul class="org-ul">
+<li>I take this to mean that input records are slow but come from
+multiple places. Actions take less time than average record arrival.
+</li>
+</ul>
+</li>
+</ul>
+
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="left" />
+
+<col  class="left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="left">Attribute</th>
+<th scope="col" class="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="left">max queue size</td>
+<td class="left">on order of 10^4</td>
+</tr>
+
+<tr>
+<td class="left">input record rate</td>
+<td class="left">slower than 1/second</td>
+</tr>
+
+<tr>
+<td class="left">time to do an action</td>
+<td class="left">less than 10 seconds</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-sec-6" class="outline-2">
+<h2 id="sec-6"><span class="section-number-2">6</span> Use Cases</h2>
+<div class="outline-text-2" id="text-6">
+</div>
+<div id="outline-container-sec-6-1" class="outline-3">
+<h3 id="sec-6-1"><span class="section-number-3">6.1</span> Running smoothly</h3>
+<div class="outline-text-3" id="text-6-1">
+<p>
+This is the normal use case.  If all our software is running well and
+all data meets format expectations, this is how we think it will run.
+</p>
+
+<ol class="org-ol">
+<li>SensorProxy sends data record to the system (fan in from multiple
+SensorProxies)
+</li>
+<li>System adds record to queue (FIFO order)
+</li>
+<li>System pops record off bottom of queue, applies Action to record
+<ul class="org-ul">
+<li>If Action fails; record pushed to top of queue, failure count
+incremented
+</li>
+</ul>
+</li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-sec-6-2" class="outline-3">
+<h3 id="sec-6-2"><span class="section-number-3">6.2</span> Systemic Action Failures</h3>
+<div class="outline-text-3" id="text-6-2">
+<p>
+If a systemic problem causes a cascade of action failures (e.g. a
+memory leak in Ingest module makes it run out of RAM), we may get a
+bunch of failures.  When the systemic problem is eliminated, we want
+to be able to run Action against the records that haven't been
+processed. 
+</p>
+
+<ol class="org-ol">
+<li>Operator is subscribed to error queue notifications.
+</li>
+<li>Action is intended to be a Network Move. Action fails.
+</li>
+<li>If the Action for the record has failed more than N times; an
+error is logged and the record is deactivated (moved from active to
+inactive queue); 
+</li>
+<li>Otherwise: DQ increments error count against record and pushed
+record back to the head of the queue. (last to execute)
+</li>
+<li>Operator receives notification of error.
+</li>
+<li>Operator diagnoses problem and finds that actions are attempting to
+transfer to a remote machine that is not available.
+</li>
+<li>Operator restarts remote machine.
+</li>
+<li>Operator re-activates records that produced error.
+</li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-sec-6-3" class="outline-3">
+<h3 id="sec-6-3"><span class="section-number-3">6.3</span> Queue gets exceedingly large</h3>
+</div>
+<div id="outline-container-sec-6-4" class="outline-3">
+<h3 id="sec-6-4"><span class="section-number-3">6.4</span> Power failure brings down machine that was running Queue</h3>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: <span class="timestamp-wrapper"><span class="timestamp">&lt;2014-08-01 Fri&gt;</span></span></p>
+<p class="author">Author: NOAO</p>
+<p class="date">Created: 2014-08-01 Fri 14:24</p>
+<p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 24.3.1 (<a href="http://orgmode.org">Org</a> mode 8.2.7b)</p>
+<p class="validation"></p>
+</div>
+</body>
+</html>
