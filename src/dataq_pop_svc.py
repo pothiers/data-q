@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 '''\ 
 Pop records from queue and apply action. 
 '''
@@ -12,8 +12,10 @@ import argparse
 import logging
 import json
 import time
+import sys
 
 import redis
+#!import daemon
 
 import utils
 import defaultCfg
@@ -109,8 +111,11 @@ def main():
     logging.debug('Debug output is enabled!!')
     ###########################################################################
 
+    utils.save_pid(sys.argv[0])
+
     cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
     process_queue_forever(redis.StrictRedis(), cfg)
 
 if __name__ == '__main__':
     main()
+

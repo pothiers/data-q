@@ -9,7 +9,6 @@
 # processname: dataq
 # config: /etc/sysconfig/dataq
 # pidfile: /var/run/dataq/dqpush.pid
-# pidfile: /var/run/dataq/dqpop.pid
 #
 ### BEGIN INIT INFO
 # Provides: dataq
@@ -30,16 +29,16 @@ fi
 #!!! TEMPORARY (haha) HACKS: point at pothier's install dir
 # Python3 and redis-py are required for this code. 
 export PATH=/home/pothiers/PYTHON_ENV/bin:/usr/bin:/sbin:/bin:/usr/sbin
-export pushlog=/tmp/dataq-push-$$.log
-export poplog=/tmp/dataq-pop-$$.log
+export pushlog=/tmp/dataq-push.log
+export poplog=/tmp/dataq-pop.log
 
 
 bdir=/home/pothiers/sandbox/data-q/src
 dqpush=${DQPUSH-$bdir/dataq_push_svc.py}
 dqpop=${DQPOP-$bdir/dataq_pop_svc.py}
 prog=dataq
-pidfilepush=${PIDFILEPUSH-/var/run/$prog/dqpush.pid}
-pidfilepop=${PIDFILEPOP-/var/run/$prog/dqpop.pid}
+pidfilepush=${PIDFILEPUSH-/var/run/dataq/${dqpush##*/}.pid}
+pidfilepop=${PIDFILEPOP-/var/run/dataq/${dqpop##*/}.pid}
 lockfile=${LOCKFILE-/var/lock/subsys/$prog}
 RETVAL=0
 STOP_TIMEOUT=${STOP_TIMEOUT-10}
@@ -55,27 +54,37 @@ conf_check() {
 start() {
     conf_check
 	# Start daemons.
-	echo -n $"Starting $prog (push): "
-    daemon --pidfile=${pidfilepush} --check $prog $nohup python3 $dqpush < /dev/null > $pushlog 2>&1 &
-    echo $"[Started]"
-	echo -n $"Starting $prog (pop): "
-    echo $"[Started]"
-    daemon --pidfile=${pidfilepop} --check $prog nohup python3 $dqpop < /dev/null > $poplog 2>&1 &
-    
+	echo -n $"Starting $prog [${dqpush##*/}]: "
+    daemon --pidfile=${pidfilepush} nohup python3 $dqpush < /dev/null > $pushlog 2>&1 &
 	RETVAL=$?
-	[ $RETVAL = 0 ] && touch ${lockfile}
-	return $RETVAL
+	[ $RETVAL = 0 ] && touch ${lockfile}  && echo_success
+    echo
+    retpush=$RETVAL
 
+	echo -n $"Starting $prog [${dqpop##*/}]: "
+    daemon --pidfile=${pidfilepop} nohup python3 $dqpop < /dev/null > $poplog 2>&1 &
+	RETVAL=$?
+	[ $RETVAL = 0 ] && touch ${lockfile}  && echo_success
+    echo
+    retpop=$RETVAL
+
+	return $(( $retpush + $retpop ))
 }
 
 stop() {
     echo -n $"Stopping $prog: "
-    killproc -p ${pidfilepush} -d ${STOP_TIMEOUT} $dqpush  \
-        && killproc -p ${pidfilepop} -d ${STOP_TIMEOUT} $dqpop
-
-    RETVAL=$?
+    killproc -p ${pidfilepush} -d ${STOP_TIMEOUT} $dqpush  
+    retpush=$?
     echo
-    [ $RETVAL -eq 0 ] && rm -f ${lockfile} ${pidfilepush} ${pidfilepop}
+    [ $retpush -eq 0 ] && rm -f ${pidfilepush} 
+    
+    killproc -p ${pidfilepop} -d ${STOP_TIMEOUT} $dqpop
+    retpop=$?
+    echo
+    [ $retpop -eq 0 ] && rm -f ${pidfilepop} 
+
+
+    [ $retpush -eq 0 ] && [ $retpop -eq 0 ] && rm -f ${lockfile}
 }
 
 
@@ -89,14 +98,13 @@ case "$1" in
 	    stop
 	;;
   status)
-        status -p ${pidfilepush} $dqpush 
-	    r1=$?
-        status -p ${pidfilepop} $dqpop
-	    r2=$?
-        
-        # this is dumb!!! What's the right way?
-	    [ "$r1" -eq 0 -a "$r2" -eq 0 ]
-        RETVAL=$?
+        status -p ${pidfilepush} -l ${lockfile} $dqpush 
+        retpush=$?
+
+        status -p ${pidfilepop} -l ${lockfile} $dqpop 
+        retpop=$?
+
+	    RETVAL=$(( $retpush + $retpop))
 	    ;;
   restart)
 	stop

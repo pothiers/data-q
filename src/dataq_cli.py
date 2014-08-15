@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 '''\
 Provide commands (switches) that can be run to modify or display the 
 data queue.

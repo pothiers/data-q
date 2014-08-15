@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 '''\ 
 Read data records from socket and push to queue. 
 
@@ -8,12 +8,17 @@ throw one of them away.
 '''
 
 import argparse
+import sys
 import logging
 import socketserver
 import json
+import sys
 
 import redis
+#!import daemon
+#!import daemon.runner
 
+import utils
 import defaultCfg
 from dbvars import *
 
@@ -56,6 +61,23 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
             self.wfile.write(bytes('Pushed ID=%s'%checksum,'UTF-8'))
         pl.execute()
 
+class App():
+    def __init__(self, host, port, pidfile='/var/run/dataq/dqpush.pid'):
+        self.stdin_path = '/dev/null'
+        #! self.stdout_path = '/tmp/dataq-push-stdout.log'
+        #! self.stderr_path = '/tmp/dataq-push-stderr.log'
+        self.stdout_path = '/home/pothiers/tmp/dataq-push-stdout.log'
+        self.stderr_path = '/home/pothiers/tmp/dataq-push-stderr.log'
+        self.pidfile_path =  pidfile
+        self.pidfile_timeout = 5
+
+    def run(self):
+        server = socketserver.TCPServer((host, port),
+                                        DataRecordTCPHandler)
+        server.r = redis.StrictRedis()
+        server.cfg = cfg
+        server.serve_forever()
+
 ##############################################################################
 def main():
     parser = argparse.ArgumentParser(
@@ -70,6 +92,8 @@ def main():
     parser.add_argument('--cfg', 
                         help='Configuration file',
                         type=argparse.FileType('r') )
+
+    #! parser.add_argument('action',  choices=['start','stop','restart'])
 
 
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
@@ -88,15 +112,21 @@ def main():
     logging.debug('Debug output is enabled!!')
     ######################################################################
 
+    utils.save_pid(sys.argv[0])
+
     cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
+    
+
     server = socketserver.TCPServer((args.host, args.port),
                                     DataRecordTCPHandler)
-
-    # Activate the server; this will keep running until you
-    # interrupt the program with Ctrl-C
     server.r = redis.StrictRedis()
     server.cfg = cfg
     server.serve_forever()
+
+    #! app = App(args.host, args.port)
+    #! daemon_runner = daemon.runner.DaemonRunner(app)
+    #! daemon_runner.do_action()
+    
 
 if __name__ == '__main__':
     main()
