@@ -21,7 +21,11 @@ dir=`dirname $file`
 origdir=`pwd`
 cd $dir
 dir=`pwd`
-PATH=$dir:$PATH
+cd ../src
+srcdir=`pwd`
+cd $dir
+
+PATH=$srcdir:$dir:$PATH
 
 source smoke-lib.sh
 return_code=0
