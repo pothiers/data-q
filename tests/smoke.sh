@@ -21,7 +21,7 @@ dir=`dirname $file`
 origdir=`pwd`
 cd $dir
 dir=`pwd`
-cd ../src
+cd ../dataq
 srcdir=`pwd`
 cd $dir
 
@@ -102,6 +102,7 @@ testCommand load1 "load 2>&1" "^\#" n
 
 testCommand advance1 "advance 2>&1" "^\#" n
 testCommand actions1 "actions 2>&1" "^\#" n
+
 
 testCommand deactivate1 "deactivate 2>&1" "^\#" n
 testCommand activate1 "activate 2>&1" "^\#" n

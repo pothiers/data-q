@@ -62,7 +62,7 @@ def process_queue_forever(r, cfg,delay=1.0):
         else:
             errorCnt += 1
             cnt = pl.hincrby(ecnt,rid)
-            print('Error count for "%s"=%d'%(rid,cnt))
+            print(('Error count for "%s"=%d'%(rid,cnt)))
             if cnt > cfg['maximum_errors_per_record']:
                 pl.lpush(iq,rid)  # action kept failing: move to Inactive queue
                 logging.warning(

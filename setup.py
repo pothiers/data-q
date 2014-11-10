@@ -14,7 +14,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version='0.0.dev1',
+    version='0.0.dev3',
 
     description='Simulate a data-flow described by a graphviz diagram',
     long_description=long_description,

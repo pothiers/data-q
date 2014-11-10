@@ -69,7 +69,7 @@ def list_queue(r,which):
         for ridB in sorted(r.smembers(rids)):
             rid = ridB.decode()
             rec = utils.decode_dict(r.hgetall(rid))
-            kvlist = sorted(rec.items(), key=lambda x: x[0])
+            kvlist = sorted(list(rec.items()), key=lambda x: x[0])
             print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
         return 
 
@@ -82,7 +82,7 @@ def list_queue(r,which):
     for ridB in id_list:
         rid = ridB.decode()
         rec = utils.decode_dict(r.hgetall(rid))
-        kvlist = sorted(rec.items(), key=lambda x: x[0])
+        kvlist = sorted(list(rec.items()), key=lambda x: x[0])
         print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
 
     
@@ -92,7 +92,10 @@ def dump_queue(r, outfile):
     for ridB in ids:
         rid = ridB.decode()
         rec = utils.decode_dict(r.hgetall(rid))
-        print('%s %s %s'%(rec['filename'],rid,rec['size']), file=outfile)
+        print('%s %s %s'%(rec['filename'],rid,rec['size']),
+              file=outfile,
+              flush=True
+          )
 
 
 

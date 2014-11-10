@@ -40,7 +40,7 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
                         
             
         self.data = self.rfile.readline().strip().decode()
-        logging.debug('Data line read from socket=%s',self.data)
+        logging.debug('2Data line read from socket="%s"',self.data)
         (fname,checksum,size) = self.data.split() #! specific to our APP
         rec = dict(list(zip(['filename','size'],[fname,size])))
 

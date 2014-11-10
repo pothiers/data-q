@@ -3,7 +3,7 @@ import os, os.path
 
 def decode_dict(byte_dict):
     str_dict = dict()
-    for k,v in byte_dict.items():
+    for k,v in list(byte_dict.items()):
         str_dict[k.decode()] = v.decode()
     return str_dict
 
@@ -15,5 +15,6 @@ def save_pid(progpath):
     # What is the right way???
     pid = os.getpid()
     with open('/var/run/dataq/%s.pid'%(base),'w') as f:
-        print(pid,file=f,flush=True)
+        print(pid, file=f, flush=True)
     return pid
+    
