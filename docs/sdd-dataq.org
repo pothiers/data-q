@@ -99,38 +99,39 @@ also (or that might be started elsewhere).
 Here is a diagram showing the data flow. 
 
 #+BEGIN_SRC dot :file figures/design-diagram.png :cmdline -Tpng
-digraph mygraph {
-    rankdir="LR";
-    edge [len=1.0]; 
-    //! title [label="Data-queue Design diagram", shape=plaintext];
+  digraph mygraph {
+      rankdir="LR";
+      edge [len=1.0]; 
+      //! title [label="Data-queue Design diagram", shape=plaintext];
 
-    // DB
-    node [shape="box3d"];
-    q [label="Redis\nQueue"];
+      // DB
+      node [shape="box3d"];
+      q [label="Redis\nQueue"];
+      
+      // data
+      node [shape="folder"];
+      config [label="Data Queue\nConfiguration"];
+
+      // modules
+      node [shape="component"];
+      push [label="Push\nServer"];
+      pop  [label="Pop\nServer"];
+      cli  [label="Command\nInterpreter"];
+
+      // external
+      node [shape="box", peripheries="2"];
+      feed [label="Data\nRecords"];
+      action [label="Execute\nAction"];
+
+      // flow
+      config -> {pop;push;}
+      feed -> push [label = "TCP"];
+      push -> q -> pop -> action;
+      action -> push [label = "Failures < N"];
+      cli -> q;
+  }
     
-    // data
-    node [shape="folder"];
-    config [label="Data Queue\nConfiguration"];
-
-    // modules
-    node [shape="component"];
-    push [label="Push\nServer"];
-    pop  [label="Pop\nServer"];
-    cli  [label="Command\nInterpreter"];
-
-    // external
-    node [shape="box", peripheries="2"];
-    feed [label="Data\nRecords"];
-    action [label="Execute\nAction"];
-
-    // flow
-    config -> pop;
-    feed -> push [label = "TCP"];
-    push -> q -> pop -> action;
-    cli -> q;
-}
-  
-  
+    
 #+END_SRC
 
 
@@ -154,7 +155,7 @@ of the queue.
 
 #+BEGIN_SRC sh :session pyenv :exports both :results output
 .  ~/PYTHON_ENV/bin/activate
-~/sandbox/data-q/dataq_push_svc.py --help
+~/sandbox/data-q/src/dataq_push_svc.py --help
 #+END_SRC
 #+RESULTS:
 
@@ -177,7 +178,7 @@ more than this, it is moved to the inactive queue.  To disable any
 retry, set the parameter to zero. (the default)
 
 #+BEGIN_SRC sh :session pyenv :exports both :results output
-~/sandbox/data-q/dataq_pop_svc.py --help
+~/sandbox/data-q/src/dataq_pop_svc.py --help
 #+END_SRC
 #+RESULTS:
 
@@ -205,7 +206,7 @@ Provides commands to modify queue and queue processing:
 10. [X] ACTIVATE range of records (move INACTIVE to ACTIVE)
 
 #+BEGIN_SRC sh :session pyenv :exports both :results output
-~/sandbox/data-q/dataq_cli.py --help
+~/sandbox/data-q/src/dataq_cli.py --help
 #+END_SRC
 #+RESULTS:
 
