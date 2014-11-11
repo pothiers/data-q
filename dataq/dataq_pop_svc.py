@@ -15,12 +15,11 @@ import time
 import sys
 
 import redis
-#!import daemon
 
-import utils
-import defaultCfg
-from dbvars import *
-from actions import *
+from . import dqutils
+from . import defaultCfg
+from .dbvars import *
+from .actions import *
 
 def process_queue_forever(r, cfg,delay=1.0): 
     action_name = cfg['action_name']

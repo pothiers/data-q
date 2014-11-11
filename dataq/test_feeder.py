@@ -1,16 +1,13 @@
 #! /usr/bin/env python
 '''\
 Read a file of data records, send to dataq_svc over socket.
-
-Records start with a delay field that indicates seconds to wait before
-sending record.
 '''
 
-import os, sys, string, argparse, logging
-from pprint import pprint 
+import sys, argparse, logging
 import socket
 
-def dummyClient(host,port):
+def dummy_client(host, port):
+    'For testing. (unused)'
     data = "This is it"
     # Create a socket (SOCK_STREAM means a TCP socket)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -25,11 +22,11 @@ def dummyClient(host,port):
     finally:
         sock.close()
 
-    print(("Sent:     {}".format(data)))
-    print(("Received: {}".format(received)))
+    print("Sent:     {}".format(data))
+    print("Received: {}".format(received))
 
-def feedFile(infile, host, port):
-
+def feed_file(infile, host, port):
+    'read lines from infile and post to host:port via TCP.'
     for line in infile:
         data = line.strip()
         print(("Sending:     {}".format(data)))
@@ -40,7 +37,7 @@ def feedFile(infile, host, port):
         try:
             # Connect to server and send data
             sock.connect((host, port))
-            sock.sendall(bytes(data+'\n','UTF-8'))
+            sock.sendall(bytes(data+'\n', 'UTF-8'))
 
             # Receive data from the server
             received = sock.recv(1024)
@@ -48,7 +45,7 @@ def feedFile(infile, host, port):
             # ... and shut down
             sock.close()
 
-        print(("Received: {}".format(received)))
+        print("Received:{}".format(received.decode('UTF-8')))
 
 
 
@@ -65,14 +62,15 @@ def main():
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'
         )
-    parser.add_argument('infile',  help='Input file',
-                        type=argparse.FileType('r') )
-    parser.add_argument('--host',  help='Host to bind to',
+    parser.add_argument('infile', help='Input file',
+                        type=argparse.FileType('r'))
+    parser.add_argument('--host', help='Host to bind to',
                         default='localhost')
-    parser.add_argument('--port',  help='Port to bind to',
+    parser.add_argument('--port', help='Port to bind to',
                         type=int, default=9988)
 
-    parser.add_argument('--loglevel',      help='Kind of diagnostic output',
+    parser.add_argument('--loglevel',
+                        help='Kind of diagnostic output',
                         choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
                         default='WARNING',
                         )
@@ -83,16 +81,16 @@ def main():
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
-        parser.error('Invalid log level: %s' % args.loglevel) 
-    logging.basicConfig(level = log_level,
+        parser.error('Invalid log level: %s' % args.loglevel)
+    logging.basicConfig(level=log_level,
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
     logging.debug('Debug output is enabled by test_feeder !!!')
 
 
-    #!dummyClient(args.host, args.port)
-    feedFile(args.infile, args.host, args.port)
+    #!dummy_client(args.host, args.port)
+    feed_file(args.infile, args.host, args.port)
 
 if __name__ == '__main__':
     main()

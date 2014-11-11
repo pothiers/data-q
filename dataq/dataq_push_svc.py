@@ -2,6 +2,8 @@
 '''\ 
 Read data records from socket and push to queue. 
 
+Record: <md5sum> <absolute_filename> [<error_count>]
+
 The checksum provided for each data record is used as an ID.  If the
 checksum of two records is the same, we assume the data is. So we can
 throw one of them away.
@@ -12,15 +14,12 @@ import sys
 import logging
 import socketserver
 import json
-import sys
 
 import redis
-#!import daemon
-#!import daemon.runner
 
-import utils
-import defaultCfg
-from dbvars import *
+from . import dqutils
+from . import defaultCfg
+from .dbvars import *
 
 class DataRecordTCPHandler(socketserver.StreamRequestHandler):
 
@@ -36,29 +35,31 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
                           + 'Disabling push to queue.  '
                           + 'To reenable: "dataq_cli --read on"  '
                           )
-            r.set(readP,'off')
-                        
-            
+            r.set(readP, 'off')
+
         self.data = self.rfile.readline().strip().decode()
-        logging.debug('2Data line read from socket="%s"',self.data)
-        (fname,checksum,size) = self.data.split() #! specific to our APP
-        rec = dict(list(zip(['filename','size'],[fname,size])))
+        logging.debug('Data line read from socket="%s"', self.data)
+        #!(fname,checksum,size) = self.data.split() #! specific to our APP
+        #!rec = dict(list(zip(['filename','size'],[fname,size])))
+        (checksum, fname, *others) = self.data.split()
+        count = 0 if len(others) == 0 else int(others[0])
+        rec = dict(filename=fname, checksum=checksum, error_count=count)
 
         pl = r.pipeline()
-        pl.watch(rids,aq,aqs,checksum)
+        pl.watch(rids, aq, aqs, checksum)
         pl.multi()
-        if r.sismember(aqs,checksum) == 1:
-            logging.warning(': Record for %s is already in queue.' 
+        if r.sismember(aqs, checksum) == 1:
+            logging.warning(': Record for %s is already in queue.'
                             +' Ignoring duplicate.', checksum)
-            self.wfile.write('Ignored ID=%s'%checksum)
+            self.wfile.write(bytes('Ignored ID=%s'%checksum, 'UTF-8'))
         else:
             # add to DB
-            pl.sadd(aqs,checksum) 
-            pl.lpush(aq,checksum)
-            pl.sadd(rids,checksum) 
-            pl.hmset(checksum,rec)
-            pl.save()    
-            self.wfile.write(bytes('Pushed ID=%s'%checksum,'UTF-8'))
+            pl.sadd(aqs, checksum)
+            pl.lpush(aq, checksum)
+            pl.sadd(rids, checksum)
+            pl.hmset(checksum, rec)
+            pl.save()
+            self.wfile.write(bytes('Pushed ID=%s'%checksum, 'UTF-8'))
         pl.execute()
 
 class App():

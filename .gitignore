@@ -3,6 +3,7 @@ OBSOLETE/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+wheelhouse/
 
 # C extensions
 *.so
@@ -57,4 +58,5 @@ docs/_build/
 
 # emacs
 *\#
+.\#*
 *~

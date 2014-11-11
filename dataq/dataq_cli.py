@@ -11,13 +11,14 @@ import logging.config
 import logging.handlers
 import pprint
 import json
+import fileinput
 
 import redis
 
-import defaultCfg
-from dbvars import *
-import utils
-from loggingCfg import *
+from . import dqutils
+from . import defaultCfg
+from .dbvars import *
+from .loggingCfg import *
 
 dq_logger = logging.getLogger('dataq.cli')
 
@@ -99,40 +100,45 @@ def dump_queue(r, outfile):
 
 
 
-def load_queue(r, infile):
+def load_queue(r, infiles):
+    'Push records (lines) from list of files. (or stdin if infiles is empty).'
     warnings = 0
     loaded = 0
 
-    for line in infile:
-        prio = 0
-        (fname,checksum,size) = line.strip().split()
-        rec = dict(list(zip(['filename','size'],[fname,int(size)])))
+    with fileinput.input(files=infiles) as infile:
+        for line in infile:
+            print('DBG: line=',line)
+            prio = 0
+            #!(fname, checksum, size) = line.strip().split()
+            #!rec = dict(list(zip(['filename', 'size'], [fname, int(size)])))
+            (checksum, fname, *others) = line.strip().split()
+            count = 0 if len(others) == 0 else int(others[0])
+            rec = dict(filename=fname, checksum=checksum, error_count=count)
 
-        pl = r.pipeline()
-        pl.watch(rids,aq,aqs,checksum)
-        pl.multi()
-        dq_logger.debug(': Read line with id=%s',checksum)
-        if r.sismember(aqs,checksum) == 1:
-            dq_logger.warning(': Record for %s is already in queue.' 
-                            +' Ignoring duplicate.', checksum)
-            warnings += 1
-        else:
-            # add to DB
-            pl.sadd(aqs,checksum) 
-            pl.lpush(aq,checksum)
-            pl.sadd(rids,checksum) 
-            pl.hmset(checksum,rec)
-            pl.save()    
-            loaded += 1
-        pl.execute()
-    print('LOAD: Issued %d warnings. %d loaded'%(warnings,loaded))
-    
+            pl = r.pipeline()
+            pl.watch(rids, aq, aqs, checksum)
+            pl.multi()
+            dq_logger.debug(': Read line with id=%s', checksum)
+            if r.sismember(aqs, checksum) == 1:
+                dq_logger.warning(': Record for %s is already in queue.'
+                                  +' Ignoring duplicate.', checksum)
+                warnings += 1
+            else:
+                # add to DB
+                pl.sadd(aqs, checksum)
+                pl.lpush(aq, checksum)
+                pl.sadd(rids, checksum)
+                pl.hmset(checksum, rec)
+                pl.save()
+                loaded += 1
+                pl.execute()
+        print('LOAD: Issued %d warnings. %d loaded'%(warnings, loaded))
 
 def get_selected(ids,first,last):
     selected = ids[ids.index(first):ids.index(last)+1]
     if len(selected) == 0:
         selected = ids[ids.index(last):ids.index(first)+1]
-    return selected
+        return selected
     
 def advance_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
@@ -152,9 +158,9 @@ def advance_range(r,first,last):
         # rpush doesn't seem to work with multi values so I can't do
         # all SELECTED at once.
         pl.rpush(aq,rid)
-    pl.save()    
-    pl.execute()    
-    print('Advanced %d records to next-in-line' % (len(selected),))
+        pl.save()    
+        pl.execute()    
+        print('Advanced %d records to next-in-line' % (len(selected),))
 
 def deactivate_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
@@ -166,11 +172,11 @@ def deactivate_range(r,first,last):
     ids = [b.decode() for b in r.lrange(aq,0,-1)]
     selected = get_selected(ids,first,last)
     dq_logger.debug('Selected records = %s',selected)
-   
+    
     for rid in selected:
         if r.sismember(iqs,rid) == 1:
             dq_logger.warning(': Record for %s is already in inactive queue.' 
-                            +' Ignoring duplicate.', rid)
+                              +' Ignoring duplicate.', rid)
             warnings += 1
         else:
             pl.lrem(aq,0,rid)
@@ -178,9 +184,9 @@ def deactivate_range(r,first,last):
             pl.lpush(iq,rid)
             pl.sadd(iqs,rid)
     
-    pl.save()    
-    pl.execute()    
-    print('Deactivated %d records' % (len(selected),))
+        pl.save()    
+        pl.execute()    
+        print('Deactivated %d records' % (len(selected),))
 
 def activate_range(r,first,last):
     '''Move range of records incluing FIRST and LAST id from where
@@ -196,90 +202,93 @@ def activate_range(r,first,last):
     selected = get_selected(ids,first,last)
 
     dq_logger.debug('Selected records (first,last) = (%s,%s) %s',
-                  first,last, selected)
-   
+                    first, last, selected)
+    
     for rid in selected:
-        if r.sismember(aqs,rid) == 1:
-            dq_logger.warning(': Record for %s is already in active queue.' 
-                            +' Ignoring duplicate.', rid)
+        if r.sismember(aqs, rid) == 1:
+            dq_logger.warning(': Record for %s is already in active queue.'
+                              +' Ignoring duplicate.', rid)
             warnings += 1
         else:
             moved += 1
-            pl.lrem(iq,0,rid)
-            pl.srem(iqs,rid)
-            pl.sadd(aqs,rid)
-            pl.rpush(aq,rid)
-    pl.save()    
-    pl.execute()    
-    print('Activated %d records' % moved)
+            pl.lrem(iq, 0 ,rid)
+            pl.srem(iqs, rid)
+            pl.sadd(aqs, rid)
+            pl.rpush(aq, rid)
+        pl.save()
+        pl.execute()
+        print('Activated %d records' % moved)
 
 
 ##############################################################################
 
 
 def main():
+    'Parse command line (a mini-interpreter) and do the work.'
     parser = argparse.ArgumentParser(
         description='Modify or display the data queue',
         epilog='EXAMPLE: %(prog)s --summary'
-        )
-    parser.add_argument('--host',  help='Host to bind to',
+    )
+    parser.add_argument('--host',
+                        help='Host to bind to',
                         default='localhost')
-    parser.add_argument('--port',  help='Port to bind to',
+    parser.add_argument('--port',
+                        help='Port to bind to',
                         type=int, default=9988)
-    parser.add_argument('--cfg', 
+    parser.add_argument('--cfg',
                         help='Configuration file',
-                        type=argparse.FileType('r') )
+                        type=argparse.FileType('r'))
 
     parser.add_argument('--summary', '-s',
                         help='Show summary of queue contents.',
-                        action='store_true' )
-    parser.add_argument('--info',  '-i', help='Show info about Redis server.',
-                        action='store_true' )
+                        action='store_true')
+    parser.add_argument('--info', '-i', help='Show info about Redis server.',
+                        action='store_true')
     parser.add_argument('--list', '-l',
                         help='List queue',
-                        choices=['active','inactive','records'],
-                        )
-    parser.add_argument('--action', '-a',  
+                        choices=['active', 'inactive', 'records'])
+    parser.add_argument('--action', '-a',
                         help='Turn on/off running actions on queue records.',
                         default=None,
-                        choices=['on','off'],
-                        )
-    parser.add_argument('--read',  '-r',  
+                        choices=['on', 'off'])
+    parser.add_argument('--read', '-r',
                         help='Turn on/off reading socket and pushing to queue.',
                         default=None,
-                        choices=['on','off'],
-                        )
-    parser.add_argument('--clear',  help='Delete queue related data from DB',
-                        action='store_true' )
+                        choices=['on', 'off'])
+    parser.add_argument('--clear', help='Delete queue related data from DB',
+                        action='store_true')
 
-    parser.add_argument('--dump', 
+    parser.add_argument('--dump',
                         help='Dump copy of queue into this file',
-                        type=argparse.FileType('w') )
-    parser.add_argument('--load', 
-                        help='File of data records to load into queue',
-                        type=argparse.FileType('r') )
+                        type=argparse.FileType('w'))
+    parser.add_argument('--load',
+                        help='File of data records to load into queue.'
+                        +' Multiple allowed.  Use "-" for stdin',
+                        action='append')
 
-    parser.add_argument('--advance', 
+    parser.add_argument('--advance',
                         help='Move records to end of queue.',
-                        nargs=2 )
+                        nargs=2)
 
-    parser.add_argument('--deactivate',  
+    parser.add_argument('--deactivate',
                         help='Move records to INACTIVE',
-                        nargs=2 )
-    parser.add_argument('--activate',  help='Move records to ACTIVE',
-                        nargs=2 )
+                        nargs=2)
+    parser.add_argument('--activate',
+                        help='Move records to ACTIVE',
+                        nargs=2)
 
-    parser.add_argument('--loglevel',      help='Kind of diagnostic output',
-                        choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
+    parser.add_argument('--loglevel',
+                        help='Kind of diagnostic output',
+                        choices=['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
                         default='WARNING',
-                        )
+    )
     args = parser.parse_args()
 
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(numeric_level, int):
         parser.error('Invalid log level: %s' % args.loglevel) 
-    logging.config.dictConfig(LOG_SETTINGS)
+        logging.config.dictConfig(LOG_SETTINGS)
 
 
 
@@ -294,7 +303,8 @@ def main():
     #!                                               )
     #!dq_logger.addHandler(handler)
     dq_logger.debug('Debug output is enabled!!')
-    dq_logger.info('EXECUTING: %s',' '.join(sys.argv))
+    #dq_logger.info('EXECUTING: %s',' '.join(sys.argv))
+    print('EXECUTING: %s'%' '.join(sys.argv))
 
 
     ############################################################################
@@ -305,21 +315,22 @@ def main():
         clear_db(r)
 
     if args.action is not None:
-        r.set(actionP,args.action)
-        r.lpush(dummy,'ignore')
-    if args.read is not None:
-        r.set(readP,args.read)
+        r.set(actionP, args.action)
+        r.lpush(dummy, 'ignore')
+        if args.read is not None:
+            r.set(readP, args.read)
 
 
     if args.list:
-        list_queue(r,args.list)
-        
+        list_queue(r, args.list)
+
     if args.dump:
         dump_queue(r, args.dump)
 
     if args.load:
+        print('args.load=',args.load)
         load_queue(r, args.load)
-    
+
     if args.advance:
         advance_range(r, args.advance[0], args.advance[1])
 
@@ -328,11 +339,11 @@ def main():
 
     if args.activate:
         activate_range(r, args.activate[0], args.activate[1])
-        
+
     if args.info:
         info(r)
-    if args.summary:
-        summary(r)
+        if args.summary:
+            summary(r)
 
     r.save()
 
