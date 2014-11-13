@@ -1,13 +1,12 @@
 #! /usr/bin/env python3
-'''\ 
-Read data records from socket and push to queue. 
+"""Read data records from socket and push to queue.
 
 Record: <md5sum> <absolute_filename> [<error_count>]
 
 The checksum provided for each data record is used as an ID.  If the
 checksum of two records is the same, we assume the data is. So we can
 throw one of them away.
-'''
+"""
 
 import argparse
 import sys
@@ -21,8 +20,8 @@ from . import dqutils
 from . import defaultCfg
 from .dbvars import *
 
-class DataRecordTCPHandler(socketserver.StreamRequestHandler):
-
+class DataRecordTCPHandler(socketserver. StreamRequestHandler):
+    "Process records from TCP socket."
     def handle(self):
         r = self.server.r
         cfg = self.server.cfg
@@ -86,38 +85,39 @@ def main():
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
         )
 
-    parser.add_argument('--host',  help='Host to bind to',
+    parser.add_argument('--host',
+                        help='Host to bind to',
                         default='localhost')
-    parser.add_argument('--port',  help='Port to bind to',
+    parser.add_argument('--port',
+                        help='Port to bind to',
                         type=int, default=9988)
-    parser.add_argument('--cfg', 
+    parser.add_argument('--cfg',
                         help='Configuration file',
-                        type=argparse.FileType('r') )
+                        type=argparse.FileType('r'))
 
     #! parser.add_argument('action',  choices=['start','stop','restart'])
 
 
-    parser.add_argument('--loglevel',      help='Kind of diagnostic output',
-                        choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
-                        default='WARNING',
-                        )
+    parser.add_argument('--loglevel',
+                        help='Kind of diagnostic output',
+                        choices=['CRTICAL', 'ERROR', 'WARNING',
+                                 'INFO', 'DEBUG'],
+                        default='WARNING')
     args = parser.parse_args()
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
-        parser.error('Invalid log level: %s' % args.loglevel) 
-    logging.basicConfig(level = log_level,
+        parser.error('Invalid log level: %s' % args.loglevel)
+    logging.basicConfig(level=log_level,
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
     logging.debug('Debug output is enabled!!')
     ######################################################################
 
-    utils.save_pid(sys.argv[0])
+    dqutils.save_pid(sys.argv[0])
 
     cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
-    
-
     server = socketserver.TCPServer((args.host, args.port),
                                     DataRecordTCPHandler)
     server.r = redis.StrictRedis()
@@ -127,7 +127,6 @@ def main():
     #! app = App(args.host, args.port)
     #! daemon_runner = daemon.runner.DaemonRunner(app)
     #! daemon_runner.do_action()
-    
 
 if __name__ == '__main__':
     main()

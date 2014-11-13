@@ -1,4 +1,5 @@
 OBSOLETE/
+tests/data-files/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

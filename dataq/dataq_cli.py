@@ -22,14 +22,15 @@ from .loggingCfg import *
 
 dq_logger = logging.getLogger('dataq.cli')
 
-def clear_db(r):
+def clear_db(red):
+    'Delete queue related data from DB'
     dq_logger.info(': Resettimg everything related to data queue in redis DB.')
-    pl = r.pipeline()
-    ids = r.smembers(rids)
+    pl = red.pipeline()
+    ids = red.smembers(rids)
     pl.watch(rids,aq,aqs,iq,iqs,*ids)
     pl.multi()
     
-    if r.scard(rids) > 0:
+    if red.scard(rids) > 0:
         pl.delete(*ids)
     pl.delete(aq,aqs,iq,iqs,rids)
     if pl.get(actionP) == None:
@@ -38,22 +39,23 @@ def clear_db(r):
         pl.set(readP,'on')
     pl.execute()
 
-def info(r):
-    pprint.pprint(r.info())
+def info(red):
+    pprint.pprint(red.info())
 
-def summary(r):
-    if r.get(actionP) == None:
-        r.set(actionP,'on')
-    if r.get(readP) == None:
-        r.set(readP,'on')
+def summary(red):
+    'Summarize queue contents.'
+    if red.get(actionP) == None:
+        red.set(actionP,'on')
+    if red.get(readP) == None:
+        red.set(readP,'on')
 
     prms = dict(
-        lenActive = r.llen(aq),
-        lenInactive = r.llen(iq),
-        numRecords = r.scard(rids),
-        actionP = r.get(actionP).decode(),
+        lenActive = red.llen(aq),
+        lenInactive = red.llen(iq),
+        numRecords = red.scard(rids),
+        actionP = red.get(actionP).decode(),
         actionPkey = actionP,
-        readP = r.get(readP).decode(),
+        readP = red.get(readP).decode(),
         readPkey = readP,
         )
     print('''
@@ -64,12 +66,13 @@ ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
 Socket READ enabled:   %(readP)s [%(readPkey)s]
 ''' % prms)
 
-def list_queue(r,which):
+def list_queue(red, which):
+    'List the content of the queue.'
     if which == 'records':
-        print(('Records (%d):'  % (r.scard(rids),)))
-        for ridB in sorted(r.smembers(rids)):
+        print(('Records (%d):'  % (red.scard(rids),)))
+        for ridB in sorted(red.smembers(rids)):
             rid = ridB.decode()
-            rec = utils.decode_dict(r.hgetall(rid))
+            rec = dqutils.decode_dict(red.hgetall(rid))
             kvlist = sorted(list(rec.items()), key=lambda x: x[0])
             print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
         return 
@@ -78,36 +81,35 @@ def list_queue(r,which):
         q = aq
     else:
         q = iq
-    id_list = r.lrange(q,0,-1)
+    id_list = red.lrange(q, 0, -1)
     print(('%s QUEUE (%s):'  % (which, len(id_list))))
     for ridB in id_list:
         rid = ridB.decode()
-        rec = utils.decode_dict(r.hgetall(rid))
+        rec = dqutils.decode_dict(red.hgetall(rid))
         kvlist = sorted(list(rec.items()), key=lambda x: x[0])
         print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
 
-    
-def dump_queue(r, outfile):
-    ids = r.lrange(aq,0,-1)
+def dump_queue(red, outfile):
+    'Dump copy of queue into this file'
+    ids = red.lrange(aq, 0, -1)
     activeIds = set(ids)
     for ridB in ids:
         rid = ridB.decode()
-        rec = utils.decode_dict(r.hgetall(rid))
-        print('%s %s %s'%(rec['filename'],rid,rec['size']),
+        rec = dqutils.decode_dict(red.hgetall(rid))
+        print('%s %s %s'%(rec['filename'], rid, rec['size']),
               file=outfile,
               flush=True
           )
 
 
 
-def load_queue(r, infiles):
+def push_queue(red, infiles):
     'Push records (lines) from list of files. (or stdin if infiles is empty).'
     warnings = 0
     loaded = 0
 
     with fileinput.input(files=infiles) as infile:
         for line in infile:
-            print('DBG: line=',line)
             prio = 0
             #!(fname, checksum, size) = line.strip().split()
             #!rec = dict(list(zip(['filename', 'size'], [fname, int(size)])))
@@ -115,11 +117,11 @@ def load_queue(r, infiles):
             count = 0 if len(others) == 0 else int(others[0])
             rec = dict(filename=fname, checksum=checksum, error_count=count)
 
-            pl = r.pipeline()
+            pl = red.pipeline()
             pl.watch(rids, aq, aqs, checksum)
             pl.multi()
             dq_logger.debug(': Read line with id=%s', checksum)
-            if r.sismember(aqs, checksum) == 1:
+            if red.sismember(aqs, checksum) == 1:
                 dq_logger.warning(': Record for %s is already in queue.'
                                   +' Ignoring duplicate.', checksum)
                 warnings += 1
@@ -132,86 +134,86 @@ def load_queue(r, infiles):
                 pl.save()
                 loaded += 1
                 pl.execute()
-        print('LOAD: Issued %d warnings. %d loaded'%(warnings, loaded))
+        print('PUSH: Issued %d warnings. %d loaded'%(warnings, loaded))
 
-def get_selected(ids,first,last):
+def get_selected(ids, first, last):
     selected = ids[ids.index(first):ids.index(last)+1]
     if len(selected) == 0:
         selected = ids[ids.index(last):ids.index(first)+1]
         return selected
-    
-def advance_range(r,first,last):
+
+def advance_range(red, first, last):
     '''Move range of records incluing FIRST and LAST id from where
     ever they are on the queue to the tail (they will become next to
     pop)'''
-    pl = r.pipeline()
+    pl = red.pipeline()
     pl.watch(aq)
     pl.multi()
 
-    ids = [b.decode() for b in r.lrange(aq,0,-1)]
-    selected = get_selected(ids,first,last)
-    dq_logger.debug('Selected records = %s',selected)
+    ids = [b.decode() for b in red.lrange(aq, 0, -1)]
+    selected = get_selected(ids, first, last)
+    dq_logger.debug('Selected records = %s', selected)
 
     # move selected IDs to the tail
     for rid in selected:
-        pl.lrem(aq,0,rid)
+        pl.lrem(aq, 0, rid)
         # rpush doesn't seem to work with multi values so I can't do
         # all SELECTED at once.
-        pl.rpush(aq,rid)
-        pl.save()    
-        pl.execute()    
+        pl.rpush(aq, rid)
+        pl.save()
+        pl.execute()
         print('Advanced %d records to next-in-line' % (len(selected),))
 
-def deactivate_range(r,first,last):
+def deactivate_range(red, first, last):
     '''Move range of records incluing FIRST and LAST id from where
     they are on the active queue to the head of INACTIVE queue.'''
-    pl = r.pipeline()
-    pl.watch(aq,aqs,iq)
+    pl = red.pipeline()
+    pl.watch(aq, aqs, iq)
     pl.multi()
 
-    ids = [b.decode() for b in r.lrange(aq,0,-1)]
-    selected = get_selected(ids,first,last)
-    dq_logger.debug('Selected records = %s',selected)
-    
+    ids = [b.decode() for b in red.lrange(aq, 0, -1)]
+    selected = get_selected(ids, first, last)
+    dq_logger.debug('Selected records = %s', selected)
+
     for rid in selected:
-        if r.sismember(iqs,rid) == 1:
-            dq_logger.warning(': Record for %s is already in inactive queue.' 
+        if red.sismember(iqs, rid) == 1:
+            dq_logger.warning(': Record for %s is already in inactive queue.'
                               +' Ignoring duplicate.', rid)
             warnings += 1
         else:
-            pl.lrem(aq,0,rid)
-            pl.srem(aqs,rid)
-            pl.lpush(iq,rid)
-            pl.sadd(iqs,rid)
-    
-        pl.save()    
-        pl.execute()    
+            pl.lrem(aq, 0, rid)
+            pl.srem(aqs, rid)
+            pl.lpush(iq, rid)
+            pl.sadd(iqs, rid)
+
+        pl.save()
+        pl.execute()
         print('Deactivated %d records' % (len(selected),))
 
-def activate_range(r,first,last):
+def activate_range(red, first, last):
     '''Move range of records incluing FIRST and LAST id from where
     they are on the INACTIVE queue to the tail of ACTIVE queue.'''
     warnings = 0
     moved = 0
-    pl = r.pipeline()
+    pl = red.pipeline()
     pl.watch(aq,aqs,iq)
     pl.multi()
 
-    ids = [b.decode() for b in r.lrange(iq,0,-1)]
-    dq_logger.debug('ids = %s',ids)
-    selected = get_selected(ids,first,last)
+    ids = [b.decode() for b in red.lrange(iq, 0, -1)]
+    dq_logger.debug('ids = %s', ids)
+    selected = get_selected(ids, first, last)
 
     dq_logger.debug('Selected records (first,last) = (%s,%s) %s',
                     first, last, selected)
-    
+
     for rid in selected:
-        if r.sismember(aqs, rid) == 1:
+        if red.sismember(aqs, rid) == 1:
             dq_logger.warning(': Record for %s is already in active queue.'
                               +' Ignoring duplicate.', rid)
             warnings += 1
         else:
             moved += 1
-            pl.lrem(iq, 0 ,rid)
+            pl.lrem(iq, 0, rid)
             pl.srem(iqs, rid)
             pl.sadd(aqs, rid)
             pl.rpush(aq, rid)
@@ -261,7 +263,7 @@ def main():
     parser.add_argument('--dump',
                         help='Dump copy of queue into this file',
                         type=argparse.FileType('w'))
-    parser.add_argument('--load',
+    parser.add_argument('--push',
                         help='File of data records to load into queue.'
                         +' Multiple allowed.  Use "-" for stdin',
                         action='append')
@@ -304,48 +306,53 @@ def main():
     #!dq_logger.addHandler(handler)
     dq_logger.debug('Debug output is enabled!!')
     #dq_logger.info('EXECUTING: %s',' '.join(sys.argv))
-    print('EXECUTING: %s'%' '.join(sys.argv))
 
 
     ############################################################################
     cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
 
-    r = redis.StrictRedis()
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    red = redis.StrictRedis()
     if args.clear:
-        clear_db(r)
+        clear_db(red)
 
     if args.action is not None:
-        r.set(actionP, args.action)
-        r.lpush(dummy, 'ignore')
+        red.set(actionP, args.action)
+        red.lpush(dummy, 'ignore')
         if args.read is not None:
-            r.set(readP, args.read)
+            red.set(readP, args.read)
 
 
     if args.list:
-        list_queue(r, args.list)
+        list_queue(red, args.list)
 
     if args.dump:
-        dump_queue(r, args.dump)
+        dump_queue(red, args.dump)
 
-    if args.load:
-        print('args.load=',args.load)
-        load_queue(r, args.load)
+    if args.push:
+        push_queue(red, args.push)
 
     if args.advance:
-        advance_range(r, args.advance[0], args.advance[1])
+        advance_range(red, args.advance[0], args.advance[1])
 
     if args.deactivate:
-        deactivate_range(r, args.deactivate[0], args.deactivate[1])
+        deactivate_range(red, args.deactivate[0], args.deactivate[1])
 
     if args.activate:
-        activate_range(r, args.activate[0], args.activate[1])
+        activate_range(red, args.activate[0], args.activate[1])
 
     if args.info:
-        info(r)
+        info(red)
         if args.summary:
-            summary(r)
+            summary(red)
 
-    r.save()
+    if args.summary:
+        summary(red)
+
+    red.save()
 
 if __name__ == '__main__':
     main()

@@ -52,7 +52,7 @@ function dump () {
 }
 
 function load () {
-    dataq_cli.py  --load q2.dat --summary
+    dataq_cli.py  --push q2.dat --summary
     dataq_cli.py  --list active --summary
 }
 
@@ -69,8 +69,8 @@ function actions() {
 
 function deactivate() {
     dataq_cli.py  --clear --action off --summary
-    dataq_cli.py  --load q1.dat 
-    dataq_cli.py  --load q2.dat --summary
+    dataq_cli.py  --push q1.dat 
+    dataq_cli.py  --push q2.dat --summary
     dataq_cli.py  --deactivate 5a80736c339faec57dac3ff36563664d 2be92a9f62367b6ee2326887d58e368c --summary
     dataq_cli.py  --list active
     dataq_cli.py  --list inactive
