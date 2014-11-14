@@ -17,7 +17,7 @@ import json
 import redis
 
 from . import dqutils
-from . import defaultCfg
+from . import default_config
 from .dbvars import *
 
 class DataRecordTCPHandler(socketserver. StreamRequestHandler):
@@ -72,6 +72,7 @@ class App():
         self.pidfile_timeout = 5
 
     def run(self):
+        logging.debug('Processing records for dataqueue from TCP host:port='%(host,port))
         server = socketserver.TCPServer((host, port),
                                         DataRecordTCPHandler)
         server.r = redis.StrictRedis()
@@ -85,15 +86,18 @@ def main():
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
         )
 
-    parser.add_argument('--host',
-                        help='Host to bind to',
-                        default='localhost')
-    parser.add_argument('--port',
-                        help='Port to bind to',
-                        type=int, default=9988)
+    #!parser.add_argument('--host',
+    #!                    help='Host to bind to',
+    #!                    default='localhost')
+    #!parser.add_argument('--port',
+    #!                    help='Port to bind to',
+    #!                    type=int, default=9988)
     parser.add_argument('--cfg',
                         help='Configuration file',
                         type=argparse.FileType('r'))
+    parser.add_argument('--queue', '-q',
+                        default='Generic-Data-Queue',
+                        help='Name of queue. Must be in cfg file.')
 
     #! parser.add_argument('action',  choices=['start','stop','restart'])
 
@@ -117,11 +121,16 @@ def main():
 
     dqutils.save_pid(sys.argv[0])
 
-    cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
-    server = socketserver.TCPServer((args.host, args.port),
+    cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
+    logging.debug('cfg=%s default_config.DQ_CONFIG=%s'%(cfg,default_config.DQ_CONFIG))
+    qcfg = dqutils.get_config_lut(cfg)[args.queue]
+    logging.debug('qcfg=%s'%(qcfg,))
+
+    logging.debug('host=%s, port=%s'%(qcfg['host'], qcfg['port']))
+    server = socketserver.TCPServer((qcfg['host'], qcfg['port']),
                                     DataRecordTCPHandler)
-    server.r = redis.StrictRedis()
-    server.cfg = cfg
+    server.r = redis.StrictRedis(host=qcfg['host'], port=qcfg['port'])
+    server.cfg = qcfg
     server.serve_forever()
 
     #! app = App(args.host, args.port)

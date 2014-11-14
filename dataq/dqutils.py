@@ -1,7 +1,7 @@
 "Convenience functions for data-queue."
 
 import os, os.path
-
+import logging
 
 def decode_dict(byte_dict):
     "Convert dict containing bytes as keys and values one containing strings."
@@ -26,3 +26,9 @@ def save_pid(progpath):
     os.chmod(pidfile, 0o777)
 
     return pid
+
+def get_config_lut(config):
+    "Return dictionary indexed by queue name."
+    logging.debug('config=%s'%(config,))
+    return dict([[q['name'], q] for q in config['queues']])
+

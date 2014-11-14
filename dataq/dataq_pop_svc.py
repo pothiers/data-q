@@ -17,18 +17,21 @@ import sys
 import redis
 
 from . import dqutils
-from . import defaultCfg
+from . import default_config
 from .dbvars import *
 from .actions import *
 
-def process_queue_forever(r, cfg, delay=1.0):
+def process_queue_forever(qcfg, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
-    action_name = cfg['action_name']
+    red = redis.StrictRedis()
+    action_name = qcfg['action_name']
     action = action_lut[action_name]
 
-    logging.debug('Process Queue')
+    logging.debug('Read Queue')
     while True:
-        if r.get(actionP) == b'off':
+        logging.debug('Read Queue: loop')
+
+        if red.get(actionP) == b'off':
             time.sleep(delay)
             continue
 
@@ -41,17 +44,18 @@ def process_queue_forever(r, cfg, delay=1.0):
         # Probably unimportant on long running system, but plays havoc
         # with testing. To resolve, on setting actionP to off, we push
         # to dummy to clear block.
-        (keynameB, ridB) = r.brpop([dummy, aq]) # BLOCKING pop (over key list)
+        (keynameB, ridB) = red.brpop([dummy, aq]) # BLOCKING pop (over key list)
         if keynameB.decode() == dummy:
             continue
         rid = ridB.decode()
+        logging.debug('Read Queue: got something')
 
-        pl = r.pipeline()
+        pl = red.pipeline()
         pl.watch(aq, aqs, rids, ecnt, iq, rid)
         pl.multi()
 
         pl.srem(aqs, rid)
-        rec = dqutils.decode_dict(r.hgetall(rid))
+        rec = dqutils.decode_dict(red.hgetall(rid))
 
         try:
             result = action(rec)
@@ -61,7 +65,7 @@ def process_queue_forever(r, cfg, delay=1.0):
         except:
             cnt = pl.hincrby(ecnt, rid)
             print(('Error count for "%s"=%d'%(rid, cnt)))
-            if cnt > cfg['maximum_errors_per_record']:
+            if cnt > qcfg['maximum_errors_per_record']:
                 pl.lpush(iq, rid)  # action kept failing: move to Inactive queue
                 logging.warning(
                     ': Failed to run action "%s" on record (%s) %d times.'
@@ -79,26 +83,29 @@ def process_queue_forever(r, cfg, delay=1.0):
 
 
 def main():
-    'Parse args, the start reading queue forever.'
+    'Parse args, then start reading queue forever.'
     parser = argparse.ArgumentParser(
         description='Data Queue service',
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
         )
 
-    parser.add_argument('--host',
-                        help='Host to bind to',
-                        default='localhost')
-    parser.add_argument('--port',
-                        help='Port to bind to',
-                        type=int, default=9988)
+    #!parser.add_argument('--host',
+    #!                    help='Host to bind to',
+    #!                    default='localhost')
+    #!parser.add_argument('--port',
+    #!                    help='Port to bind to',
+    #!                    type=int, default=9988)
     parser.add_argument('--cfg',
-                        help='Configuration file',
+                        help='Configuration file (json format)',
                         type=argparse.FileType('r'))
-
+    parser.add_argument('--queue', '-q',
+                        default='Generic-Data-Queue',
+                        help='Name of queue. Must be in cfg file.')
 
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
-                        choices=['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
+                        choices=['CRTICAL', 'ERROR', 'WARNING',
+                                 'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
 
@@ -107,15 +114,21 @@ def main():
         parser.error('Invalid log level: %s' % args.loglevel)
     logging.basicConfig(level=log_level,
                         format='%(levelname)s %(message)s',
-                        datefmt='%m-%d %H:%M'
-                        )
+                        datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled!!')
     ###########################################################################
 
     dqutils.save_pid(sys.argv[0])
 
-    cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
-    process_queue_forever(redis.StrictRedis(), cfg)
+    cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
+    logging.debug('cfg=%s default_config.DQ_CONFIG=%s'%(cfg,default_config.DQ_CONFIG))
+    qcfg = dqutils.get_config_lut(cfg)[args.queue]
+    logging.debug('qcfg=%s'%(qcfg,))
+    # red = redis.StrictRedis(host=args.host, port=args.port)
+    #! process_queue_forever(red, config)
+    process_queue_forever(qcfg)
 
 if __name__ == '__main__':
     main()
+
+    
