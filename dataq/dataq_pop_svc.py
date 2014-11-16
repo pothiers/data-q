@@ -21,6 +21,7 @@ from . import default_config
 from .dbvars import *
 from .actions import *
 
+
 def process_queue_forever(qcfg, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
     red = redis.StrictRedis()

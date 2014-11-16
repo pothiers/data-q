@@ -1,8 +1,10 @@
 "Actions that can be run against entry when popped off queue."
 import random
 import logging
+import sys
 
-# Possible actions that can be performed upon pop of record from queue.
+import os, os.path
+import subprocess
 
 def echo00(rec, prop_fail = 0.00):
     "For diagnostics (never fails)"
@@ -22,17 +24,36 @@ def echo30(rec, prop_fail = 0.30):
     # randomize success to simulate errors on cmds
     return random.random() >= prop_fail
 
-def network_move(rec):
+def network_move(rec, **kwargs):
     "Transfer from Mountain to Valley"
+    logging.debug('Transfer from Mountain to Valley.')
+    
+    #!source_root = kwargs['source_root']
+    #!irods_root = kwargs['irods_root']  # eg. '/tempZone/valley/'
+    source_root = '/var/tada/mountain_cache/'  #!!!
+    irods_root = '/tempZone/valley/mountain_mirror/'  #!!!
+    fname = rec['filename']            # absolute path
+    assert fname.index(source_root) == 0
+    
+    ifname = os.path.join(irods_root,fname[len(source_root):])
+    cmdargs1 = ['imkdir', '-p', os.path.dirname(ifname)]
+    cmdargs2 = ['iput', '-f', fname, ifname]
+
     try:
-        iput(rec['filename'], irods_path)
-    except:
+        logging.info('Removed file "%s" from mountain cache'%(rec['filename'],))
+        #!icmds.iput('-f', rec['filename'], irods_path)
+        subprocess.check_output(cmdargs1)
+        subprocess.check_output(cmdargs2)
+    except subprocess.CalledProcessError as e:
+        logging.warning('Failed using irods.iput() to transfer'
+                        +' from Mountain to Valley.')
+        print('Execution failed: ', e, file=sys.stderr)
         # Any failure means put back on queue. Keep queue handling
         # outside of actions where possible.
         raise
     else:
         # successfully transfered to Valley
-        os.remove(rec['filename'])
+        os.remove(fname)
         logging.info('Removed file "%s" from mountain cache'%(rec['filename'],))
         submit_q.push(rec)
     return True
