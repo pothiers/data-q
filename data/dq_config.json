@@ -1,0 +1,39 @@
+{
+    "__COMMENT": "Configuration info for data-queues",
+    "default_queue_values": {
+	"__COMMENT": "These are used when not explitily defined in queue",
+        "maximum_errors_per_record": 0, 
+        "maxium_queue_size": 11000,
+	"log_dir": "/var/log/dataq/"
+    },
+    "queues" : [
+        {
+            "name": "transfer",
+            "description": "Files to be moved from Mountain Cache (on Mountain) to Mountain Mirror (on Valley).",
+            "dq_host": "mountain.test.noao.edu",
+            "dq_port": 9988,       
+            "action_name": "network_move",
+            "maximum_errors_per_record": 0, 
+            "maxium_queue_size": 11000
+        },
+        {
+            "name": "submit",
+            "description": "Files that have been submitted for saving.",
+            "dq_host": "172.16.1.12",
+            "dq_port": 9988,       
+            "action_name": "submit",
+            "maximum_errors_per_record": 0, 
+            "maxium_queue_size": 11000
+        },
+        {
+            "name": "mitigate",
+            "desscription": "Files that should find their way to the archive, but have something wrong with them.",
+            "dq_host": "valley.test.noao.edu",
+            "dq_port": 9989,       
+            "action_name": "echo00",
+            "maximum_errors_per_record": 0, 
+            "maxium_queue_size": 11000
+        }
+    ]
+}
+    
