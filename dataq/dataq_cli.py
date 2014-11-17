@@ -15,6 +15,7 @@ import fileinput
 
 import redis
 
+from . import config
 from . import dqutils
 from . import defaultCfg
 from .dbvars import *
@@ -136,6 +137,35 @@ def push_queue(red, infiles):
                 pl.execute()
         print('PUSH: Issued %d warnings. %d loaded'%(warnings, loaded))
 
+def push_string(red, line):
+    'Push record (string) containing: "checksum filename"'
+    warnings = 0
+    loaded = 0
+
+    prio = 0
+    (checksum, fname, *others) = line.strip().split()
+    count = 0 if len(others) == 0 else int(others[0])
+    rec = dict(filename=fname, checksum=checksum, error_count=count)
+
+    pl = red.pipeline()
+    pl.watch(rids, aq, aqs, checksum)
+    pl.multi()
+    dq_logger.debug(': Read line with id=%s', checksum)
+    if red.sismember(aqs, checksum) == 1:
+        dq_logger.warning(': Record for %s is already in queue.'
+                          +' Ignoring duplicate.', checksum)
+        warnings += 1
+    else:
+        # add to DB
+        pl.sadd(aqs, checksum)
+        pl.lpush(aq, checksum)
+        pl.sadd(rids, checksum)
+        pl.hmset(checksum, rec)
+        pl.save()
+        loaded += 1
+        pl.execute()
+    print('PUSH: Issued %d warnings. %d loaded'%(warnings, loaded))
+
 def get_selected(ids, first, last):
     selected = ids[ids.index(first):ids.index(last)+1]
     if len(selected) == 0:
@@ -227,19 +257,23 @@ def activate_range(red, first, last):
 
 def main():
     'Parse command line (a mini-interpreter) and do the work.'
+    possible_qnames = ['transfer', 'submit', 'mitigate']
     parser = argparse.ArgumentParser(
         description='Modify or display the data queue',
         epilog='EXAMPLE: %(prog)s --summary'
     )
-    parser.add_argument('--host',
-                        help='Host to bind to',
-                        default='localhost')
-    parser.add_argument('--port',
-                        help='Port to bind to',
-                        type=int, default=9988)
+    #!parser.add_argument('--host',
+    #!                    help='Host to bind to',
+    #!                    default='localhost')
+    #!parser.add_argument('--port',
+    #!                    help='Port to bind to',
+    #!                    type=int, default=9988)
     parser.add_argument('--cfg',
                         help='Configuration file',
                         type=argparse.FileType('r'))
+    parser.add_argument('--queue', '-q',
+                        choices=possible_qnames,
+                        help='Name of queue to pop from. Must be in cfg file.')
 
     parser.add_argument('--summary', '-s',
                         help='Show summary of queue contents.',
@@ -267,6 +301,10 @@ def main():
                         help='File of data records to load into queue.'
                         +' Multiple allowed.  Use "-" for stdin',
                         action='append')
+    parser.add_argument('--pushstr',
+                        help='A single string to load into queue.'
+                        +' Space delimited string must contain at least'
+                        +' "checksum filename".')
 
     parser.add_argument('--advance',
                         help='Move records to end of queue.',
@@ -309,7 +347,8 @@ def main():
 
 
     ############################################################################
-    cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
+    #! cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
+    #! qcfg = config.get_config(possible_qnames)
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -334,6 +373,8 @@ def main():
 
     if args.push:
         push_queue(red, args.push)
+    if args.pushstr:
+        push_string(red, args.pushstr)
 
     if args.advance:
         advance_range(red, args.advance[0], args.advance[1])

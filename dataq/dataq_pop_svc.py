@@ -16,19 +16,20 @@ import sys
 
 import redis
 
+from . import config
 from . import dqutils
 from . import default_config
 from .dbvars import *
 from .actions import *
 
 
-def process_queue_forever(qcfg, delay=1.0):
+def process_queue_forever(qname, qcfg, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
     red = redis.StrictRedis()
-    action_name = qcfg['action_name']
+    action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
 
-    logging.debug('Read Queue')
+    logging.debug('Read Queue "{}'.format(qname))
     while True:
         logging.debug('Read Queue: loop')
 
@@ -59,9 +60,9 @@ def process_queue_forever(qcfg, delay=1.0):
         rec = dqutils.decode_dict(red.hgetall(rid))
 
         try:
-            result = action(rec)
-            logging.debug('Action ran successfully against (%s): %s => %s',
-                          rid, rec, result)
+            result = action(rec,qcfg=qcfg)
+            logging.debug('Action "%s" ran successfully against (%s): %s => %s',
+                          action_name, rid, rec, result)
             pl.srem(rids, rid)
         except:
             cnt = pl.hincrby(ecnt, rid)
@@ -85,6 +86,7 @@ def process_queue_forever(qcfg, delay=1.0):
 
 def main():
     'Parse args, then start reading queue forever.'
+    possible_qnames = ['transfer', 'submit', 'mitigate']
     parser = argparse.ArgumentParser(
         description='Data Queue service',
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
@@ -100,8 +102,8 @@ def main():
                         help='Configuration file (json format)',
                         type=argparse.FileType('r'))
     parser.add_argument('--queue', '-q',
-                        default='Generic-Data-Queue',
-                        help='Name of queue. Must be in cfg file.')
+                        choices=possible_qnames,
+                        help='Name of queue to pop from. Must be in cfg file.')
 
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -121,13 +123,13 @@ def main():
 
     dqutils.save_pid(sys.argv[0])
 
-    cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
-    logging.debug('cfg=%s default_config.DQ_CONFIG=%s'%(cfg,default_config.DQ_CONFIG))
-    qcfg = dqutils.get_config_lut(cfg)[args.queue]
+    #!cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
+    #!qcfg = dqutils.get_config_lut(cfg)[args.queue]
+    qcfg = config.get_config(possible_qnames)
     logging.debug('qcfg=%s'%(qcfg,))
     # red = redis.StrictRedis(host=args.host, port=args.port)
     #! process_queue_forever(red, config)
-    process_queue_forever(qcfg)
+    process_queue_forever(args.queue, qcfg)
 
 if __name__ == '__main__':
     main()

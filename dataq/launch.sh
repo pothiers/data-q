@@ -1,8 +1,15 @@
 # SOURCE this to save the PIDs
 
-dqsvcpop  --loglevel DEBUG &
+if [ "`hostname`"  = "mountain.test.noao.edu" ]; then
+    QNAME="transfer"
+else
+    QNAME="submit"
+fi
+
+
+dqsvcpop  --loglevel DEBUG --queue $QNAME &
 POPPID=$!
-dqsvcpush --loglevel DEBUG &
+dqsvcpush --loglevel DEBUG --queue $QNAME &
 PUSHPID=$!
 jobs
 echo "push PID: " $PUSHPID

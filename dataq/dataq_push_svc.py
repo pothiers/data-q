@@ -16,11 +16,13 @@ import json
 
 import redis
 
+
+from . import config
 from . import dqutils
 from . import default_config
 from .dbvars import *
 
-class DataRecordTCPHandler(socketserver. StreamRequestHandler):
+class DataRecordTCPHandler(socketserver.StreamRequestHandler):
     "Process records from TCP socket."
     def handle(self):
         r = self.server.r
@@ -61,26 +63,28 @@ class DataRecordTCPHandler(socketserver. StreamRequestHandler):
             self.wfile.write(bytes('Pushed ID=%s'%checksum, 'UTF-8'))
         pl.execute()
 
-class App():
-    def __init__(self, host, port, pidfile='/var/run/dataq/dqpush.pid'):
-        self.stdin_path = '/dev/null'
-        #! self.stdout_path = '/tmp/dataq-push-stdout.log'
-        #! self.stderr_path = '/tmp/dataq-push-stderr.log'
-        self.stdout_path = '/home/pothiers/tmp/dataq-push-stdout.log'
-        self.stderr_path = '/home/pothiers/tmp/dataq-push-stderr.log'
-        self.pidfile_path =  pidfile
-        self.pidfile_timeout = 5
-
-    def run(self):
-        logging.debug('Processing records for dataqueue from TCP host:port='%(host,port))
-        server = socketserver.TCPServer((host, port),
-                                        DataRecordTCPHandler)
-        server.r = redis.StrictRedis()
-        server.cfg = cfg
-        server.serve_forever()
+#!class App():
+#!    def __init__(self, host, port, pidfile='/var/run/dataq/dqpush.pid'):
+#!        self.stdin_path = '/dev/null'
+#!        #! self.stdout_path = '/tmp/dataq-push-stdout.log'
+#!        #! self.stderr_path = '/tmp/dataq-push-stderr.log'
+#!        self.stdout_path = '/home/pothiers/tmp/dataq-push-stdout.log'
+#!        self.stderr_path = '/home/pothiers/tmp/dataq-push-stderr.log'
+#!        self.pidfile_path =  pidfile
+#!        self.pidfile_timeout = 5
+#!
+#!    def run(self):
+#!        logging.debug('Processing records for dataqueue from TCP host:port='%(host,port))
+#!        server = socketserver.TCPServer((host, port),
+#!                                        DataRecordTCPHandler)
+#!        server.r = redis.StrictRedis()
+#!        server.cfg = cfg
+#!        server.serve_forever()
 
 ##############################################################################
 def main():
+    'Parse args, then start reading queue forever.'
+    possible_qnames = ['transfer', 'submit', 'mitigate']
     parser = argparse.ArgumentParser(
         description='Read data from socket and push to Data Queue',
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
@@ -96,8 +100,8 @@ def main():
                         help='Configuration file',
                         type=argparse.FileType('r'))
     parser.add_argument('--queue', '-q',
-                        default='Generic-Data-Queue',
-                        help='Name of queue. Must be in cfg file.')
+                        choices=possible_qnames,
+                        help='Name of queue to pop from. Must be in cfg file.')
 
     #! parser.add_argument('action',  choices=['start','stop','restart'])
 
@@ -123,14 +127,16 @@ def main():
 
     cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
     logging.debug('cfg=%s default_config.DQ_CONFIG=%s'%(cfg,default_config.DQ_CONFIG))
-    qcfg = dqutils.get_config_lut(cfg)[args.queue]
-    logging.debug('qcfg=%s'%(qcfg,))
-
-    logging.debug('host=%s, port=%s'%(qcfg['host'], qcfg['port']))
-    server = socketserver.TCPServer((qcfg['host'], qcfg['port']),
-                                    DataRecordTCPHandler)
-    server.r = redis.StrictRedis(host=qcfg['host'], port=qcfg['port'])
-    server.cfg = qcfg
+    qcfg = config.get_config(possible_qnames)
+ 
+    dq_host = qcfg[args.queue]['dq_host']
+    dq_port = qcfg[args.queue]['dq_port']
+    logging.debug('qname=%s, dq_host:port=%s:%s, qcfg=%s'%(
+         args.queue, dq_host, dq_port, qcfg))
+    server = socketserver.TCPServer((dq_host, dq_port), DataRecordTCPHandler)
+    #!server.r = redis.StrictRedis(host=qcfg['host'], port=qcfg['port'])
+    server.r = redis.StrictRedis()
+    server.cfg = qcfg[args.queue]
     server.serve_forever()
 
     #! app = App(args.host, args.port)

@@ -27,8 +27,3 @@ def save_pid(progpath):
 
     return pid
 
-def get_config_lut(config):
-    "Return dictionary indexed by queue name."
-    logging.debug('config=%s'%(config,))
-    return dict([[q['name'], q] for q in config['queues']])
-
