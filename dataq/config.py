@@ -58,7 +58,6 @@ contents. Insure queue_names are all in the list of named queues."""
         
     lut = get_config_lut(cfg)
     missing = set(queue_names) - set(lut.keys())
-    print('DBG: lut=%s, queue_names=%s, missing=%s'%(lut,queue_names,missing))
     if len(missing) > 0:
         raise Exception(
             'ERROR: Config file "{}" does not contain named queues: {}'

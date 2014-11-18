@@ -32,14 +32,12 @@ def echo30(rec, **kwargs):
 
 def push_to_q(dq_host, dq_port, fname, checksum):
     'Push a line onto data-queue named by qname.'
+    logging.debug('push_to_q({}, {}, {})'.format(dq_host, dq_port, fname))
     data = '{} {}\n'.format(checksum, fname)
     # Create a socket (SOCK_STREAM means a TCP socket)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print("DBG: connect to {}:{}".format(dq_host, dq_port))
 
     try:
-        print("DBG: Send: {}".format(data))
-
         # Connect to server and send data
         sock.connect((dq_host, dq_port))
         sock.sendall(bytes(data, 'UTF-8'))
@@ -49,7 +47,6 @@ def push_to_q(dq_host, dq_port, fname, checksum):
     finally:
         sock.close()
 
-    print("DBG: Received: {}".format(received))
 
     
 def network_move(rec, **kwargs):
@@ -169,21 +166,21 @@ def submit(rec, **kwargs):
         try:
             new_fname = tada.submit.submit_to_archive(fname)
             logging.debug('Calculated fname: {}'.format(new_fname))
-        except Exception as e:
+        except:
             # We should really do several automatic re-submits first!!!
-            logging.error('Failed submit_to_archive("{}").'
-                          + ' Pushing to Mitigation'
+            logging.error('Failed submit_to_archive({}). Pushing to Mitigation'
                           .format(fname))
             # move NOARC to MITIG directory
             mfname = os.path.join(mitag_root, tail)
-            os.rename(fname, mfname)
+            #!os.rename(fname, mfname)
+            move(noarc_root, fname, mitag_root, os.path.basename(fname))
+
             # Push to queue that operator should monitor.
-            push_to_q(dq_host, dq_port, mfname, rec['checksum'])
+            #push_to_q(dq_host, dq_port, mfname, rec['checksum']) !!! 9989
             logging.debug('Pushed to Mitagate queue and moved file to: {}'
                           .format(mfname))
         else:
             afname = os.path.join(archive_root, tail)
-            #os.rename(fname, afname)
             dest = move(noarc_root, fname, archive_root, new_fname)
             logging.debug('Moved file to: {}'.format(dest))
 
