@@ -126,13 +126,9 @@ def main():
     dqutils.save_pid(sys.argv[0])
 
     cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
-    logging.debug('cfg=%s default_config.DQ_CONFIG=%s'%(cfg,default_config.DQ_CONFIG))
     qcfg = config.get_config(possible_qnames)
- 
     dq_host = qcfg[args.queue]['dq_host']
     dq_port = qcfg[args.queue]['dq_port']
-    logging.debug('qname=%s, dq_host:port=%s:%s, qcfg=%s'%(
-         args.queue, dq_host, dq_port, qcfg))
     server = socketserver.TCPServer((dq_host, dq_port), DataRecordTCPHandler)
     #!server.r = redis.StrictRedis(host=qcfg['host'], port=qcfg['port'])
     server.r = redis.StrictRedis()

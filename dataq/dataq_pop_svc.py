@@ -29,9 +29,9 @@ def process_queue_forever(qname, qcfg, delay=1.0):
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
 
-    logging.debug('Read Queue "{}'.format(qname))
+    logging.debug('Read Queue "{}"'.format(qname))
     while True:
-        logging.debug('Read Queue: loop')
+        #! logging.debug('Read Queue: loop')
 
         if red.get(actionP) == b'off':
             time.sleep(delay)
@@ -50,7 +50,7 @@ def process_queue_forever(qname, qcfg, delay=1.0):
         if keynameB.decode() == dummy:
             continue
         rid = ridB.decode()
-        logging.debug('Read Queue: got something')
+        #!logging.debug('Read Queue: got something')
 
         pl = red.pipeline()
         pl.watch(aq, aqs, rids, ecnt, iq, rid)
@@ -126,7 +126,6 @@ def main():
     #!cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
     #!qcfg = dqutils.get_config_lut(cfg)[args.queue]
     qcfg = config.get_config(possible_qnames)
-    logging.debug('qcfg=%s'%(qcfg,))
     # red = redis.StrictRedis(host=args.host, port=args.port)
     #! process_queue_forever(red, config)
     process_queue_forever(args.queue, qcfg)

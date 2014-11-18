@@ -101,6 +101,17 @@ def network_move(rec, **kwargs):
     return True
 
 
+def move(src_root, src_abs_fname, dest_root, dest_basename):
+    'Rename a subtree under src_abs_fname to one under dest_dir.'
+    # changing part of path tail
+    tail  = os.path.relpath(src_abs_fname, src_root)  
+    os.makedirs(os.path.join(dest_root, os.path.dirname(tail)),
+                exist_ok=True)
+    logging.debug('dest_root={}, tail={}, base={}'
+                  .format(dest_root, tail, dest_basename))
+    fname = os.path.join(dest_root, os.path.dirname(tail), dest_basename)
+    os.rename(src_abs_fname, fname)
+    return fname
 
 def submit(rec, **kwargs):
     "Try to modify headers and submit FITS to archive; or push to Mitigate"
@@ -115,13 +126,19 @@ def submit(rec, **kwargs):
     dq_host = qcfg['mitigate']['dq_host']
     dq_port = qcfg['mitigate']['dq_port']
 
+    #!archive_root = kwargs['archive_root']
     #!noarc_root = kwargs['noarchive_root']
+    #!mitag_root = kwargs['mitigate_root']
     #!irods_root = kwargs['irods_root']  # eg. '/tempZone/valley/'
+    archive_root = '/var/tada/archive/'  #!!!
     noarc_root = '/var/tada/no-archive/'  #!!!
+    mitag_root = '/var/tada/mitigate/'  #!!!
     irods_root = '/tempZone/valley/mountain_mirror/'  #!!!
 
     # eg. /tempZone/valley/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
     ifname = rec['filename']            # absolute path
+    #!tail  = ifname[len(irods_root):]   
+    tail  = os.path.relpath(ifname, irods_root) # changing part of path tail
 
     if ifname.index(irods_root) != 0:
         raise Exception('iFilename "{}" does not start with "{}"'
@@ -130,7 +147,7 @@ def submit(rec, **kwargs):
     ##
     ## Put irods file on filesystem. We might mv it later.
     ##
-    fname = os.path.join(noarc_root, ifname[len(irods_root):])
+    fname = os.path.join(noarc_root, tail)
     cmdargs1 = ['mkdir', '-p', os.path.dirname(fname)]
     cmdargs2 = ['iget', '-f', ifname, fname]
     try:
@@ -142,6 +159,7 @@ def submit(rec, **kwargs):
         raise
     
 
+    new_fname = None
     if magic.from_file(fname).decode().find('FITS image data') < 0:
         # not FITS
         # Remove files if noarc_root is taking up too much space (FIFO)!!!
@@ -149,16 +167,28 @@ def submit(rec, **kwargs):
     else:
         # is FITS
         try:
-            tada.submit.submit_to_archive(fname)
+            new_fname = tada.submit.submit_to_archive(fname)
+            logging.debug('Calculated fname: {}'.format(new_fname))
         except Exception as e:
+            # We should really do several automatic re-submits first!!!
             logging.error('Failed submit_to_archive("{}").'
                           + ' Pushing to Mitigation'
                           .format(fname))
-            # move fname to mitig directory !!!
-            # mitigate.push(fname) !!!
-            raise
+            # move NOARC to MITIG directory
+            mfname = os.path.join(mitag_root, tail)
+            os.rename(fname, mfname)
+            # Push to queue that operator should monitor.
+            push_to_q(dq_host, dq_port, mfname, rec['checksum'])
+            logging.debug('Pushed to Mitagate queue and moved file to: {}'
+                          .format(mfname))
+        else:
+            afname = os.path.join(archive_root, tail)
+            #os.rename(fname, afname)
+            dest = move(noarc_root, fname, archive_root, new_fname)
+            logging.debug('Moved file to: {}'.format(dest))
 
     return True
+# END submit() action
 
 def mitigate(rec, **kwargs):
     pass
