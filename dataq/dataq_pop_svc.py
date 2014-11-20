@@ -67,9 +67,9 @@ def process_queue_forever(qname, qcfg, delay=1.0):
                           action_name, rid, rec, result)
             pl.srem(rids, rid) # only if action did not raise exception
         except:
-            logging.debug('Action "%s" got error'%(action_name,))
+            logging.debug('Error running action "{}" '.format(action_name))
             pl.hincrby(ecnt, rid)
-            cnt = red.hget(ecnt, rid)
+            cnt = rec['error_count']+1
             print('Error count={} for {}'.format(cnt, rid))
             if cnt > qcfg[qname]['maximum_errors_per_record']:
                 pl.lpush(iq, rid)  # action kept failing: move to Inactive queue
@@ -125,11 +125,13 @@ def main():
     logging.debug('Debug output is enabled!!')
     ###########################################################################
 
-    dqutils.save_pid(sys.argv[0])
 
     #!cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
     #!qcfg = dqutils.get_config_lut(cfg)[args.queue]
-    qcfg = config.get_config(possible_qnames)
+    qcfg, dirs = config.get_config(possible_qnames)
+
+    dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])
+
     # red = redis.StrictRedis(host=args.host, port=args.port)
     #! process_queue_forever(red, config)
     process_queue_forever(args.queue, qcfg)

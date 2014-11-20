@@ -1,24 +1,25 @@
 # SOURCE this to save the PIDs
 
 if [ "`hostname`"  = "mountain.test.noao.edu" ]; then
-    QNAME="transfer"
+    dqsvcpop  --loglevel DEBUG --queue transfer &
+    #!POPPID=$!
+    dqsvcpush --loglevel DEBUG --queue transfer &
+    #!PUSHPID=$!
 else
-    QNAME="submit"
+    dqsvcpop  --loglevel DEBUG --queue submit &
+    dqsvcpush --loglevel DEBUG --queue submit &
 fi
 
 
-dqsvcpop  --loglevel DEBUG --queue $QNAME &
-POPPID=$!
-dqsvcpush --loglevel DEBUG --queue $QNAME &
-PUSHPID=$!
 jobs
-echo "push PID: " $PUSHPID
-echo "pop  PID: " $POPPID
+
 
 killdq ()
 {
     echo "Killing DQ Push and Pop services"
-    kill -s SIGTERM $PUSHPID $POPPID
+    #! kill -s SIGTERM $PUSHPID $POPPID
+    kill -s SIGTERM `cat /var/run/dataq/*`
+    sleep 1
     jobs
 }
 

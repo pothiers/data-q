@@ -4,29 +4,25 @@ import logging
 import sys
 
 import os, os.path
-import subprocess
 import socket
 import tada.submit
 import magic
 
-def echo00(rec, **kwargs):
-    prop_fail = 0.00
-    "For diagnostics (never fails)"
-    print(('Action=echo00: processing record: %s' % rec))
-    # randomize success to simulate errors on cmds
-    return random.random() >= prop_fail
+from . import irods_utils as iu
+from . import dqutils as du
+from . import dataq_cli as dqc
 
-def echo10(rec, **kwargs):
-    prop_fail = 0.10
-    "For diagnostics (fails 10% of the time)"
-    print(('Action=echo10: processing record: %s' % rec))
+def echo00(rec, **kwargs):
+    "For diagnostics (never fails)"
+    prop_fail = 0.00
+    print('Action=echo00: rec={} kwargs={}'.format(rec, kwargs))
     # randomize success to simulate errors on cmds
     return random.random() >= prop_fail
 
 def echo30(rec, **kwargs):
-    prop_fail = 0.30
     "For diagnostics (fails 30% of the time)"
-    print(('Action=echo30: processing record: %s' % rec))
+    prop_fail = 0.30
+    print('Action=echo30: rec={} kwargs={}'.format(rec, kwargs))
     # randomize success to simulate errors on cmds
     return random.random() >= prop_fail
 
@@ -48,7 +44,6 @@ def push_to_q(dq_host, dq_port, fname, checksum):
         sock.close()
 
 
-    
 def network_move(rec, **kwargs):
     "Transfer from Mountain to Valley"
     logging.debug('Transfer from Mountain to Valley.')
@@ -72,20 +67,13 @@ def network_move(rec, **kwargs):
     if fname.index(source_root) != 0:
         raise Exception('Filename "{}" does not start with "{}"'
                         .format(fname, source_root))
-    
-    ifname = os.path.join(irods_root,fname[len(source_root):])
-    cmdargs1 = ['imkdir', '-p', os.path.dirname(ifname)]
-    cmdargs2 = ['iput', '-f', fname, ifname]
+
+    ifname = os.path.join(irods_root, os.path.relpath(fname, source_root))
 
     try:
-        logging.info('Removed file "%s" from mountain cache'%(rec['filename'],))
-        #!icmds.iput('-f', rec['filename'], irods_path)
-        subprocess.check_output(cmdargs1)
-        subprocess.check_output(cmdargs2)
-    except subprocess.CalledProcessError as e:
-        logging.warning('Failed using irods.iput() to transfer'
-                        +' from Mountain to Valley.')
-        print('Execution failed: ', e, file=sys.stderr)
+        iu.irods_put(fname, ifname)
+    except:
+        logging.warning('Failed to transfer from Mountain to Valley.')
         # Any failure means put back on queue. Keep queue handling
         # outside of actions where possible.
         raise
@@ -93,33 +81,17 @@ def network_move(rec, **kwargs):
         # successfully transfered to Valley
         os.remove(fname)
         logging.info('Removed file "%s" from mountain cache'%(rec['filename'],))
-        kwargs
         push_to_q(dq_host, dq_port, ifname, rec['checksum'])
     return True
 
 
-def move(src_root, src_abs_fname, dest_root, dest_basename):
-    'Rename a subtree under src_abs_fname to one under dest_dir.'
-    # changing part of path tail
-    tail  = os.path.relpath(src_abs_fname, src_root)  
-    os.makedirs(os.path.join(dest_root, os.path.dirname(tail)),
-                exist_ok=True)
-    logging.debug('dest_root={}, tail={}, base={}'
-                  .format(dest_root, tail, dest_basename))
-    fname = os.path.join(dest_root, os.path.dirname(tail), dest_basename)
-    os.rename(src_abs_fname, fname)
-    return fname
 
 def submit(rec, **kwargs):
     "Try to modify headers and submit FITS to archive; or push to Mitigate"
-    logging.debug('Submit to archive (if we can).')
-    if 'qcfg' not in kwargs:
-        raise Exception(
-            'ERROR: "submit" Action did not get required '
-            +' keyword parameter: "{}" in: {}'
-            .format('qcfg', kwargs))
-    qcfg=kwargs['qcfg']
-    
+    import redis
+    logging.info('Try to submit to archive. ({}) file={}'
+                 .format(rec['error_count'], rec['filename']))
+    qcfg = du.get_keyword('qcfg', kwargs)
     dq_host = qcfg['mitigate']['dq_host']
     dq_port = qcfg['mitigate']['dq_port']
 
@@ -128,33 +100,23 @@ def submit(rec, **kwargs):
     #!mitag_root = kwargs['mitigate_root']
     #!irods_root = kwargs['irods_root']  # eg. '/tempZone/valley/'
     archive_root = '/var/tada/archive/'  #!!!
-    noarc_root = '/var/tada/no-archive/'  #!!!
-    mitag_root = '/var/tada/mitigate/'  #!!!
+    noarc_root = '/var/tada/no-archive/' #!!!
+    mitag_root = '/var/tada/mitigate/'   #!!!
     irods_root = '/tempZone/valley/mountain_mirror/'  #!!!
 
     # eg. /tempZone/valley/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
     ifname = rec['filename']            # absolute path
-    #!tail  = ifname[len(irods_root):]   
-    tail  = os.path.relpath(ifname, irods_root) # changing part of path tail
-
-    if ifname.index(irods_root) != 0:
-        raise Exception('iFilename "{}" does not start with "{}"'
-                        .format(ifname, irods_root))
+    tail = os.path.relpath(ifname, irods_root) # changing part of path tail
 
     ##
     ## Put irods file on filesystem. We might mv it later.
     ##
     fname = os.path.join(noarc_root, tail)
-    cmdargs1 = ['mkdir', '-p', os.path.dirname(fname)]
-    cmdargs2 = ['iget', '-f', ifname, fname]
     try:
-        subprocess.check_output(cmdargs1)
-        subprocess.check_output(cmdargs2)
-    except subprocess.CalledProcessError as e:
-        logging.warning('Failed using irods.iget() on Valley.')
-        print('Execution failed: ', e, file=sys.stderr)
+        iu.irods_get(fname, ifname)
+    except:
+        logging.warning('Failed to get file from irods on Valley.')
         raise
-    
 
     new_fname = None
     if magic.from_file(fname).decode().find('FITS image data') < 0:
@@ -163,26 +125,33 @@ def submit(rec, **kwargs):
         logging.debug('Non-fits file put in: {}'.format(fname))
     else:
         # is FITS
+        fname = du.move(noarc_root, fname, archive_root)
         try:
-            new_fname = tada.submit.submit_to_archive(fname)
-            logging.debug('Calculated fname: {}'.format(new_fname))
+            fname = tada.submit.submit_to_archive(fname, archive_root)
+            logging.debug('Calculated fname: {}'.format(fname))
         except:
             # We should really do several automatic re-submits first!!!
-            logging.error('Failed submit_to_archive({}). Pushing to Mitigation'
-                          .format(fname))
+            logging.error(
+                'Failed submit_to_archive({}). Pushing to Mitigation'
+                .format(fname))
             # move NOARC to MITIG directory
             mfname = os.path.join(mitag_root, tail)
             #!os.rename(fname, mfname)
-            move(noarc_root, fname, mitag_root, os.path.basename(fname))
+            du.move(archive_root, fname, mitag_root, os.path.basename(fname))
+            logging.debug('Moved to: {}'.format(mfname))
+
+            # deactivate!!!
+            # see dataq_cli.py:deactivate_range()
+            red = redis.StrictRedis()
+            dqc.deactivate_range(red, rec['checksum'], rec['checksum'])
+            logging.debug('Deactivated {}'.format(mfname))
 
             # Push to queue that operator should monitor.
             #push_to_q(dq_host, dq_port, mfname, rec['checksum']) !!! 9989
-            logging.debug('Pushed to Mitagate queue and moved file to: {}'
-                          .format(mfname))
-        else:
-            afname = os.path.join(archive_root, tail)
-            dest = move(noarc_root, fname, archive_root, new_fname)
-            logging.debug('Moved file to: {}'.format(dest))
+#!        else:
+#!            afname = os.path.join(archive_root, tail)
+#!            dest = du.move(noarc_root, fname, archive_root, new_fname)
+#!            logging.debug('Moved file to: {}'.format(dest))
 
     return True
 # END submit() action
@@ -192,7 +161,6 @@ def mitigate(rec, **kwargs):
 
 action_lut = dict(
     echo00 = echo00,
-    echo10 = echo10,
     echo30 = echo30,
     network_move = network_move,
     submit = submit,

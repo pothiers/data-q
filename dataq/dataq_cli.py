@@ -21,11 +21,11 @@ from . import defaultCfg
 from .dbvars import *
 from .loggingCfg import *
 
-dq_logger = logging.getLogger('dataq.cli')
+#! dq_logger = logging.getLogger('dataq.cli')
 
 def clear_db(red):
     'Delete queue related data from DB'
-    dq_logger.info(': Resettimg everything related to data queue in redis DB.')
+    logging.info(': Resettimg everything related to data queue in redis DB.')
     pl = red.pipeline()
     ids = red.smembers(rids)
     pl.watch(rids,aq,aqs,iq,iqs,*ids)
@@ -121,9 +121,9 @@ def push_queue(red, infiles):
             pl = red.pipeline()
             pl.watch(rids, aq, aqs, checksum)
             pl.multi()
-            dq_logger.debug(': Read line with id=%s', checksum)
+            logging.debug(': Read line with id=%s', checksum)
             if red.sismember(aqs, checksum) == 1:
-                dq_logger.warning(': Record for %s is already in queue.'
+                logging.warning(': Record for %s is already in queue.'
                                   +' Ignoring duplicate.', checksum)
                 warnings += 1
             else:
@@ -150,9 +150,9 @@ def push_string(red, line):
     pl = red.pipeline()
     pl.watch(rids, aq, aqs, checksum)
     pl.multi()
-    dq_logger.debug(': Read line with id=%s', checksum)
+    logging.debug(': Read line with id=%s', checksum)
     if red.sismember(aqs, checksum) == 1:
-        dq_logger.warning(': Record for %s is already in queue.'
+        logging.warning(': Record for %s is already in queue.'
                           +' Ignoring duplicate.', checksum)
         warnings += 1
     else:
@@ -181,8 +181,14 @@ def advance_range(red, first, last):
     pl.multi()
 
     ids = [b.decode() for b in red.lrange(aq, 0, -1)]
-    selected = get_selected(ids, first, last)
-    dq_logger.debug('Selected records = %s', selected)
+    try:
+        selected = get_selected(ids, first, last)
+        logging.debug('Selected records = %s', selected)
+    except:
+        logging.error('IGNORED. Could not select [{}:{}] from {}.'
+                        .format(first, last, ids))
+        return
+    
 
     # move selected IDs to the tail
     for rid in selected:
@@ -202,12 +208,17 @@ def deactivate_range(red, first, last):
     pl.multi()
 
     ids = [b.decode() for b in red.lrange(aq, 0, -1)]
-    selected = get_selected(ids, first, last)
-    dq_logger.debug('Selected records = %s', selected)
+    try:
+        selected = get_selected(ids, first, last)
+        logging.debug('Selected records = %s', selected)
+    except:
+        logging.error('Could not select [{}:{}] from {}.'
+                        .format(first, last, ids))
+        raise
 
     for rid in selected:
         if red.sismember(iqs, rid) == 1:
-            dq_logger.warning(': Record for %s is already in inactive queue.'
+            logging.warning(': Record for %s is already in inactive queue.'
                               +' Ignoring duplicate.', rid)
             warnings += 1
         else:
@@ -230,15 +241,20 @@ def activate_range(red, first, last):
     pl.multi()
 
     ids = [b.decode() for b in red.lrange(iq, 0, -1)]
-    dq_logger.debug('ids = %s', ids)
-    selected = get_selected(ids, first, last)
+    logging.debug('ids = %s', ids)
+    try:
+        selected = get_selected(ids, first, last)
+        logging.debug('Selected records (first,last) = (%s,%s) %s',
+                        first, last, selected)
+    except:
+        logging.error('IGNORED. Could not select [{}:{}] from {}.'
+                        .format(first, last, ids))
+        return
 
-    dq_logger.debug('Selected records (first,last) = (%s,%s) %s',
-                    first, last, selected)
 
     for rid in selected:
         if red.sismember(aqs, rid) == 1:
-            dq_logger.warning(': Record for %s is already in active queue.'
+            logging.warning(': Record for %s is already in active queue.'
                               +' Ignoring duplicate.', rid)
             warnings += 1
         else:
@@ -341,9 +357,9 @@ def main():
     #!                                               maxBytes=1e4,
     #!                                               backupCount=9,
     #!                                               )
-    #!dq_logger.addHandler(handler)
-    dq_logger.debug('Debug output is enabled!!')
-    #dq_logger.info('EXECUTING: %s',' '.join(sys.argv))
+    #!logging.addHandler(handler)
+    logging.debug('Debug output is enabled!!')
+    #logging.info('EXECUTING: %s',' '.join(sys.argv))
 
 
     ############################################################################
