@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 """Read data records from socket and push to queue.
 
-Record: <md5sum> <absolute_filename> [<error_count>]
+Record: <md5sum> <absolute_filename> [<others> ...]
 
 The checksum provided for each data record is used as an ID.  If the
 checksum of two records is the same, we assume the data is. So we can
@@ -43,8 +43,7 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
         #!(fname,checksum,size) = self.data.split() #! specific to our APP
         #!rec = dict(list(zip(['filename','size'],[fname,size])))
         (checksum, fname, *others) = self.data.split()
-        count = 0 if len(others) == 0 else int(others[0])
-        rec = dict(filename=fname, checksum=checksum, error_count=count)
+        rec = dict(filename=fname, checksum=checksum)
 
         pl = r.pipeline()
         pl.watch(rids, aq, aqs, checksum)

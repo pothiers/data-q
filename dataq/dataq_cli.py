@@ -170,7 +170,7 @@ def get_selected(ids, first, last):
     selected = ids[ids.index(first):ids.index(last)+1]
     if len(selected) == 0:
         selected = ids[ids.index(last):ids.index(first)+1]
-        return selected
+    return selected
 
 def advance_range(red, first, last):
     '''Move range of records incluing FIRST and LAST id from where

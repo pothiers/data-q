@@ -60,28 +60,31 @@ def process_queue_forever(qname, qcfg, delay=1.0):
         rec = dqutils.decode_dict(red.hgetall(rid))
 
 
+        logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
         try:
-            logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
             result = action(rec,qcfg=qcfg)
-            logging.debug('Action "%s" ran successfully against (%s): %s => %s',
-                          action_name, rid, rec, result)
-            pl.srem(rids, rid) # only if action did not raise exception
         except:
-            logging.debug('Error running action "{}" '.format(action_name))
             pl.hincrby(ecnt, rid)
-            cnt = rec['error_count']+1
-            print('Error count={} for {}'.format(cnt, rid))
+            ercnt = red.hget(ecnt,rid)
+            cnt = 0 if ercnt == None else int(ercnt)
+            logging.error('Error({}) running action "{}"'
+                          .format(cnt, action_name))
             if cnt > qcfg[qname]['maximum_errors_per_record']:
-                pl.lpush(iq, rid)  # action kept failing: move to Inactive queue
                 logging.warning(
                     ': Failed to run action "%s" on record (%s) %d times.'
                     +' Moving it to the Inactive queue',
                     action_name, rec, cnt)
+                pl.lpush(iq, rid)  # action kept failing: move to Inactive queue
             else:
                 logging.error(
                     ': Failed to run action "%s" on record (%s) %d times',
                     action_name, rec, cnt)
                 pl.lpush(aq, rid) # failed: got to the end of the line
+        else:
+            logging.info('Action "%s" ran successfully against (%s): %s => %s',
+                         action_name, rid, rec, result)
+            pl.srem(rids, rid) # only if action did not raise exception
+
         pl.save()
         pl.execute()
 

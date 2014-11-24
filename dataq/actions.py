@@ -58,9 +58,9 @@ def network_move(rec, **kwargs):
     dq_port = qcfg['submit']['dq_port']
 
     #!source_root = kwargs['source_root']
-    #!irods_root = kwargs['irods_root']  # eg. '/tempZone/valley/'
+    #!irods_root = kwargs['irods_root']  # eg. '/tempZone/'
     source_root = '/var/tada/mountain_cache/'  #!!!
-    irods_root = '/tempZone/valley/mountain_mirror/'  #!!!
+    irods_root = '/tempZone/mountain_mirror/'  #!!!
     fname = rec['filename']            # absolute path
 
     logging.debug('source_root={}, fname={}'.format(source_root, fname))
@@ -89,8 +89,8 @@ def network_move(rec, **kwargs):
 def submit(rec, **kwargs):
     "Try to modify headers and submit FITS to archive; or push to Mitigate"
     import redis
-    logging.info('Try to submit to archive. ({}) file={}'
-                 .format(rec['error_count'], rec['filename']))
+    logging.info('Try to submit to archive. File={}'
+                 .format(rec['filename']))
     qcfg = du.get_keyword('qcfg', kwargs)
     dq_host = qcfg['mitigate']['dq_host']
     dq_port = qcfg['mitigate']['dq_port']
@@ -98,13 +98,13 @@ def submit(rec, **kwargs):
     #!archive_root = kwargs['archive_root']
     #!noarc_root = kwargs['noarchive_root']
     #!mitag_root = kwargs['mitigate_root']
-    #!irods_root = kwargs['irods_root']  # eg. '/tempZone/valley/'
+    #!irods_root = kwargs['irods_root']  # eg. '/tempZone/'
     archive_root = '/var/tada/archive/'  #!!!
     noarc_root = '/var/tada/no-archive/' #!!!
     mitag_root = '/var/tada/mitigate/'   #!!!
-    irods_root = '/tempZone/valley/mountain_mirror/'  #!!!
+    irods_root = '/tempZone/mountain_mirror/'  #!!!
 
-    # eg. /tempZone/valley/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
+    # eg. /tempZone/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
     ifname = rec['filename']            # absolute path
     tail = os.path.relpath(ifname, irods_root) # changing part of path tail
 
@@ -128,11 +128,10 @@ def submit(rec, **kwargs):
         fname = du.move(noarc_root, fname, archive_root)
         try:
             fname = tada.submit.submit_to_archive(fname, archive_root)
-            logging.debug('Calculated fname: {}'.format(fname))
-        except:
+        except Exception as sex:
             # We should really do several automatic re-submits first!!!
             logging.error(
-                'Failed submit_to_archive({}). Pushing to Mitigation'
+                'FAILED submit_to_archive({}). Pushing to Mitigation'
                 .format(fname))
             # move NOARC to MITIG directory
             mfname = os.path.join(mitag_root, tail)
@@ -143,15 +142,16 @@ def submit(rec, **kwargs):
             # deactivate!!!
             # see dataq_cli.py:deactivate_range()
             red = redis.StrictRedis()
-            dqc.deactivate_range(red, rec['checksum'], rec['checksum'])
-            logging.debug('Deactivated {}'.format(mfname))
-
-            # Push to queue that operator should monitor.
-            #push_to_q(dq_host, dq_port, mfname, rec['checksum']) !!! 9989
-#!        else:
-#!            afname = os.path.join(archive_root, tail)
-#!            dest = du.move(noarc_root, fname, archive_root, new_fname)
-#!            logging.debug('Moved file to: {}'.format(dest))
+            try:
+                dqc.deactivate_range(red, rec['checksum'], rec['checksum'])
+            except Exception as ex:
+                logging.error('Could not Deactivate {}: {}'.format(mfname, ex))
+            else:
+                logging.debug('Deactivated {}'.format(mfname))
+                # Person should monitor submit.deactive!!!
+            raise sex
+        else:
+            logging.info('PASSED submit_to_archive({}).'  .format(fname))
 
     return True
 # END submit() action
