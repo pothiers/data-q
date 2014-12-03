@@ -28,6 +28,7 @@ def process_queue_forever(qname, qcfg, delay=1.0):
     red = redis.StrictRedis()
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
+    maxerrors = qcfg[qname]['maximum_errors_per_record']
 
     logging.debug('Read Queue "{}"'.format(qname))
     while True:
@@ -52,40 +53,57 @@ def process_queue_forever(qname, qcfg, delay=1.0):
         rid = ridB.decode()
         #!logging.debug('Read Queue: got something')
 
+        # buffer all commands done by pipeline, make command list atomic
         pl = red.pipeline()
-        pl.watch(aq, aqs, rids, ecnt, iq, rid)
-        pl.multi()
 
+        # switches to normal pipeline mode where commands get buffered
+        pl.watch(aq, aqs, rids, ecnt, iq, rid)
+
+        if not pl.hexists(ecnt,rid):
+            pl.hset(ecnt, rid, 0)
+        rec = dqutils.decode_dict(pl.hgetall(rid))
+
+        # switches to normal pipeline mode where commands get buffered
+        pl.multi()
         pl.srem(aqs, rid)
-        rec = dqutils.decode_dict(red.hgetall(rid))
 
 
         logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
         try:
             result = action(rec,qcfg=qcfg)
-        except:
+        except Exception as ex:
             pl.hincrby(ecnt, rid)
-            ercnt = red.hget(ecnt,rid)
-            cnt = 0 if ercnt == None else int(ercnt)
-            logging.error('Error({}) running action "{}"'
+
+            # pl.hget() returns StrictPipeline; NOT value of key!
+            # use of RED here causes us to not get incremented value
+            ercnt = int(red.hget(ecnt,rid)) + 1 
+
+            erall = red.hgetall(ecnt)
+            logging.debug('Got error on action. ercnt="{}, erall={}"'
+                          .format(ercnt, erall))
+            #!cnt = 0 if ercnt == None else ercnt
+            cnt = ercnt
+            logging.debug('Error(#{}) running action "{}"'
                           .format(cnt, action_name))
-            if cnt > qcfg[qname]['maximum_errors_per_record']:
-                logging.warning(
-                    ': Failed to run action "%s" on record (%s) %d times.'
-                    +' Moving it to the Inactive queue',
-                    action_name, rec, cnt)
+            if cnt > maxerrors:
+                msg = ('Failed to run action "{}" {} times. '
+                       +' Max allowed is {} so moving it to the INACTIVE queue.'
+                       +' Record={}. Exception={}')
+                logging.error(msg.format(action_name, cnt, maxerrors, rec, ex))
                 pl.lpush(iq, rid)  # action kept failing: move to Inactive queue
+                # Person should monitor INACTIVE queue!!!
             else:
                 logging.error(
-                    ': Failed to run action "%s" on record (%s) %d times',
+                    'Failed to run action "%s" on record (%s) %d times',
                     action_name, rec, cnt)
-                pl.lpush(aq, rid) # failed: got to the end of the line
+                pl.lpush(aq, rid) # failed: go to the end of the line
         else:
             logging.info('Action "%s" ran successfully against (%s): %s => %s',
                          action_name, rid, rec, result)
             pl.srem(rids, rid) # only if action did not raise exception
 
         pl.save()
+        # execute the pipeline
         pl.execute()
 
 ##############################################################################
