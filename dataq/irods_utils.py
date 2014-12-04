@@ -46,6 +46,7 @@ def irods_reg(fs_path, irods_path):
     """Register a file or a directory of files and subdirectory into
 iRODS. The file must already exist on the server where the resource is
 located. The full path must be supplied for both paths."""
+    logging.warning('Use of iRODS "ireg" command SHOULD BE AVOIDED!')
     out = None
     cmdline = ['imkdir', '-p', os.path.dirname(irods_path)]
     try:

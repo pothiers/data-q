@@ -22,8 +22,8 @@ from . import default_config
 from .dbvars import *
 from .actions import *
 
-
-def process_queue_forever(qname, qcfg, delay=1.0):
+# GROSS: highly nested code!!!
+def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
     red = redis.StrictRedis()
     action_name = qcfg[qname]['action_name']
@@ -31,7 +31,7 @@ def process_queue_forever(qname, qcfg, delay=1.0):
     maxerrors = qcfg[qname]['maximum_errors_per_record']
 
     logging.debug('Read Queue "{}"'.format(qname))
-    while True:
+    while True: # pop from queue forever
         #! logging.debug('Read Queue: loop')
 
         if red.get(actionP) == b'off':
@@ -54,57 +54,68 @@ def process_queue_forever(qname, qcfg, delay=1.0):
         #!logging.debug('Read Queue: got something')
 
         # buffer all commands done by pipeline, make command list atomic
-        pl = red.pipeline()
+        with red.pipeline() as pl:
+            while True: # retry of clients collide on watched variables
+                try:
+                    pl.watch(aq, aqs, rids, ecnt, iq, rid)
+                    rec = dqutils.decode_dict(pl.hgetall(rid))
 
-        # switches to normal pipeline mode where commands get buffered
-        pl.watch(aq, aqs, rids, ecnt, iq, rid)
+                    # switch to normal pipeline mode where commands get buffered
+                    pl.multi()
 
-        if not pl.hexists(ecnt,rid):
-            pl.hset(ecnt, rid, 0)
-        rec = dqutils.decode_dict(pl.hgetall(rid))
+                    pl.srem(aqs, rid)
+                    logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
+                    try:
+                        result = action(rec, qcfg=qcfg, dirs=dirs)
+                        logging.debug('DONE action: "{}" => {}'
+                                      .format(action_name, result))
+                    except Exception as ex:
+                        pl.hincrby(ecnt, rid)
 
-        # switches to normal pipeline mode where commands get buffered
-        pl.multi()
-        pl.srem(aqs, rid)
+                        # pl.hget() returns StrictPipeline; NOT value of key!
+                        # use of RED here causes us to not get incremented value
+                        ercnt = int(red.hget(ecnt,rid)) + 1 
 
-
-        logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
-        try:
-            result = action(rec,qcfg=qcfg)
-        except Exception as ex:
-            pl.hincrby(ecnt, rid)
-
-            # pl.hget() returns StrictPipeline; NOT value of key!
-            # use of RED here causes us to not get incremented value
-            ercnt = int(red.hget(ecnt,rid)) + 1 
-
-            erall = red.hgetall(ecnt)
-            logging.debug('Got error on action. ercnt="{}, erall={}"'
-                          .format(ercnt, erall))
-            #!cnt = 0 if ercnt == None else ercnt
-            cnt = ercnt
-            logging.debug('Error(#{}) running action "{}"'
-                          .format(cnt, action_name))
-            if cnt > maxerrors:
-                msg = ('Failed to run action "{}" {} times. '
-                       +' Max allowed is {} so moving it to the INACTIVE queue.'
-                       +' Record={}. Exception={}')
-                logging.error(msg.format(action_name, cnt, maxerrors, rec, ex))
-                pl.lpush(iq, rid)  # action kept failing: move to Inactive queue
-                # Person should monitor INACTIVE queue!!!
-            else:
-                logging.error(
-                    'Failed to run action "%s" on record (%s) %d times',
-                    action_name, rec, cnt)
-                pl.lpush(aq, rid) # failed: go to the end of the line
-        else:
-            logging.info('Action "%s" ran successfully against (%s): %s => %s',
-                         action_name, rid, rec, result)
-            pl.srem(rids, rid) # only if action did not raise exception
-
-        pl.save()
-        # execute the pipeline
-        pl.execute()
+                        erall = red.hgetall(ecnt)
+                        logging.debug('Got error on action. ercnt={}'
+                                      .format(ercnt))
+                        #!cnt = 0 if ercnt == None else ercnt
+                        cnt = ercnt
+                        logging.debug('Error(#{}) running action "{}"'
+                                      .format(cnt, action_name))
+                        if cnt > maxerrors:
+                            msg = ('Failed to run action "{}" {} times. '
+                                   +' Max allowed is {} so moving it to the'
+                                   +' INACTIVE queue.'
+                                   +' Record={}. Exception={}')
+                            logging.error(msg.format(action_name,
+                                                     cnt, maxerrors, rec, ex))
+                            # action kept failing: move to Inactive queue
+                            pl.lpush(iq, rid)  
+                            # Person should monitor INACTIVE queue!!!
+                        else:
+                            msg = ('Failed to run action "{}" {} times. '
+                                   +' Max allowed is {} so will try again'
+                                   +' later.'
+                                   +' Record={}. Exception={}')
+                            logging.error(msg.format(action_name,
+                                                     cnt, maxerrors, rec, ex))
+                            # failed: go to the end of the line
+                            pl.lpush(aq, rid) 
+                    else:
+                        # action did not raise exception
+                        msg = ('Action "{}" ran successfully against ({}):'
+                               +' {} => {}')
+                        logging.info(msg.format(action_name, rid, rec, result))
+                        pl.srem(rids, rid)
+                    pl.save()
+                    pl.execute() # execute the pipeline
+                    break
+                except redis.WatchError:
+                    # another client must have changed  watched vars between
+                    # the time we started WATCHing them and the pipeline's
+                    # execution. Our best bet is to just retry.
+                    continue # while True
 
 ##############################################################################
 
@@ -155,7 +166,7 @@ def main():
 
     # red = redis.StrictRedis(host=args.host, port=args.port)
     #! process_queue_forever(red, config)
-    process_queue_forever(args.queue, qcfg)
+    process_queue_forever(args.queue, qcfg, dirs)
 
 if __name__ == '__main__':
     main()

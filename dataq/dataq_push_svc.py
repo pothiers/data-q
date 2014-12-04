@@ -58,6 +58,7 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
             pl.lpush(aq, checksum)
             pl.sadd(rids, checksum)
             pl.hmset(checksum, rec)
+            pl.hset(ecnt, checksum, 0) # error count against file
             pl.save()
             self.wfile.write(bytes('Pushed ID=%s'%checksum, 'UTF-8'))
         pl.execute()

@@ -46,21 +46,23 @@ def push_to_q(dq_host, dq_port, fname, checksum):
 
 def network_move(rec, **kwargs):
     "Transfer from Mountain to Valley"
-    logging.debug('Transfer from Mountain to Valley.')
-    if 'qcfg' not in kwargs:
-        raise Exception(
-            'ERROR: "network_move" Action did not get required '
-            +' keyword parameter: "{}" in: {}'
-            .format('qcfg', kwargs))
+    logging.debug('ACTION: network_move()')
+    for p in ['qcfg', 'dirs']:
+        if p not in kwargs:
+            raise Exception(
+                'ERROR: "network_move" Action did not get required '
+                +' keyword parameter: "{}" in: {}'
+                .format(p, kwargs))
     qcfg=kwargs['qcfg']
+    dirs=kwargs['dirs']
+    logging.debug('dirs={}'.format(dirs))
 
     dq_host = qcfg['submit']['dq_host']
     dq_port = qcfg['submit']['dq_port']
 
-    #!source_root = kwargs['source_root']
     #!irods_root = kwargs['irods_root']  # eg. '/tempZone/'
-    source_root = '/var/tada/mountain_cache/'  #!!!
-    irods_root = '/tempZone/mountain_mirror/'  #!!!
+    source_root = qcfg['transfer']['cache_dir']
+    irods_root = qcfg['transfer']['mirror_irods']
     fname = rec['filename']            # absolute path
 
     logging.debug('source_root={}, fname={}'.format(source_root, fname))
@@ -72,8 +74,9 @@ def network_move(rec, **kwargs):
 
     try:
         iu.irods_put(fname, ifname)
-    except:
-        logging.warning('Failed to transfer from Mountain to Valley.')
+    except Exception as ex:
+        logging.warning('Failed to transfer from Mountain to Valley. {}'
+                        .format(ex))
         # Any failure means put back on queue. Keep queue handling
         # outside of actions where possible.
         raise
@@ -88,21 +91,16 @@ def network_move(rec, **kwargs):
 
 def submit(rec, **kwargs):
     "Try to modify headers and submit FITS to archive; or push to Mitigate"
+    logging.debug('ACTION: submit()')
     import redis
-    logging.info('Try to submit to archive. File={}'
-                 .format(rec['filename']))
     qcfg = du.get_keyword('qcfg', kwargs)
-    dq_host = qcfg['mitigate']['dq_host']
-    dq_port = qcfg['mitigate']['dq_port']
+    dq_host = qcfg['submit']['dq_host']
+    dq_port = qcfg['submit']['dq_port']
 
-    #!archive_root = kwargs['archive_root']
-    #!noarc_root = kwargs['noarchive_root']
-    #!mitag_root = kwargs['mitigate_root']
-    #!irods_root = kwargs['irods_root']  # eg. '/tempZone/'
-    archive_root = '/var/tada/archive/'  #!!!
-    noarc_root = '/var/tada/no-archive/' #!!!
-    mitag_root = '/var/tada/mitigate/'   #!!!
-    irods_root = '/tempZone/mountain_mirror/'  #!!!
+    archive_root = qcfg['submit']['archive_dir']
+    noarc_root =  qcfg['submit']['noarchive_dir']
+    irods_root =  qcfg['submit']['mirror_irods'] # '/tempZone/mountain_mirror/'
+    #! mitag_root = '/var/tada/mitigate/' 
 
     # eg. /tempZone/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
     ifname = rec['filename']            # absolute path
@@ -122,33 +120,33 @@ def submit(rec, **kwargs):
     if magic.from_file(fname).decode().find('FITS image data') < 0:
         # not FITS
         # Remove files if noarc_root is taking up too much space (FIFO)!!!
-        logging.debug('Non-fits file put in: {}'.format(fname))
+        logging.info('Non-fits file put in: {}'.format(fname))
     else:
         # is FITS
         fname = du.move(noarc_root, fname, archive_root)
         try:
-            fname = tada.submit.submit_to_archive(fname, archive_root)
+            fname = tada.submit.submit_to_archive(fname, qcfg)
         except Exception as sex:
-            # We should really do several automatic re-submits first!!!
-            logging.error(
-                'FAILED submit_to_archive({}). Pushing to Mitigation'
-                .format(fname))
-            # move NOARC to MITIG directory
-            mfname = os.path.join(mitag_root, tail)
-            #!os.rename(fname, mfname)
-            du.move(archive_root, fname, mitag_root, os.path.basename(fname))
-            logging.debug('Moved to: {}'.format(mfname))
-
-            # deactivate!!!
-            # see dataq_cli.py:deactivate_range()
-            red = redis.StrictRedis()
-            try:
-                dqc.deactivate_range(red, rec['checksum'], rec['checksum'])
-            except Exception as ex:
-                logging.error('Could not Deactivate {}: {}'.format(mfname, ex))
-            else:
-                logging.debug('Deactivated {}'.format(mfname))
-                # Person should monitor submit.deactive!!!
+            #! # We should really do several automatic re-submits first!!
+            #! logging.error(
+            #!     'FAILED submit_to_archive({}). Pushing to Mitigation'
+            #!     .format(fname))
+            #! # move NOARC to MITIG directory
+            #! mfname = os.path.join(mitag_root, tail)
+            #! #!os.rename(fname, mfname)
+            #! du.move(archive_root, fname, mitag_root, os.path.basename(fname))
+            #! logging.debug('Moved to: {}'.format(mfname))
+            #! 
+            #! # deactivate!!
+            #! # see dataq_cli.py:deactivate_range()
+            #! red = redis.StrictRedis()
+            #! try:
+            #!     dqc.deactivate_range(red, rec['checksum'], rec['checksum'])
+            #! except Exception as ex:
+            #!     logging.error('Could not Deactivate {}: {}'.format(mfname, ex))
+            #! else:
+            #!     logging.debug('Deactivated {}'.format(mfname))
+            #!     # Person should monitor submit.deactive!!
             raise sex
         else:
             logging.info('PASSED submit_to_archive({}).'  .format(fname))
@@ -160,11 +158,9 @@ def mitigate(rec, **kwargs):
     pass
 
 action_lut = dict(
-    echo00 = echo00,
-    echo30 = echo30,
-    network_move = network_move,
-    submit = submit,
-    mitigate = mitigate,
+    echo00=echo00,
+    echo30=echo30,
+    network_move=network_move,
+    submit=submit,
+    mitigate=mitigate,
     )
-
-        

@@ -32,6 +32,7 @@ def clear_db(red):
     pl.multi()
     
     if red.scard(rids) > 0:
+        pl.hdel(ecnt,*ids) # clear error counts
         pl.delete(*ids)
     pl.delete(aq,aqs,iq,iqs,rids)
     if pl.get(actionP) == None:
@@ -201,7 +202,7 @@ def advance_range(red, first, last):
         print('Advanced %d records to next-in-line' % (len(selected),))
 
 def deactivate_range(red, first, last):
-    '''Move range of records incluing FIRST and LAST id from where
+    '''Move range of records including FIRST and LAST id from where
     they are on the active queue to the head of INACTIVE queue.'''
     pl = red.pipeline()
     pl.watch(aq, aqs, iq)
@@ -231,26 +232,13 @@ def deactivate_range(red, first, last):
         pl.execute()
         print('Deactivated %d records' % (len(selected),))
 
-def activate_range(red, first, last):
-    '''Move range of records incluing FIRST and LAST id from where
-    they are on the INACTIVE queue to the tail of ACTIVE queue.'''
+
+def activate_ids(red, selected):
     warnings = 0
     moved = 0
     pl = red.pipeline()
     pl.watch(aq,aqs,iq)
     pl.multi()
-
-    ids = [b.decode() for b in red.lrange(iq, 0, -1)]
-    logging.debug('ids = %s', ids)
-    try:
-        selected = get_selected(ids, first, last)
-        logging.debug('Selected records (first,last) = (%s,%s) %s',
-                        first, last, selected)
-    except:
-        logging.error('IGNORED. Could not select [{}:{}] from {}.'
-                        .format(first, last, ids))
-        return
-
 
     for rid in selected:
         if red.sismember(aqs, rid) == 1:
@@ -265,7 +253,35 @@ def activate_range(red, first, last):
             pl.rpush(aq, rid)
         pl.save()
         pl.execute()
-        print('Activated %d records' % moved)
+    return warnings, moved
+
+def activate_all(red):
+    '''Move ALL records from INACTIVE queue to the tail of ACTIVE queue.'''
+    ids = [b.decode() for b in red.lrange(iq, 0, -1)]
+    warnings, moved = activate_ids(red, ids)
+    print('Activated {} records ({} were already active)'
+          .format(moved, warnings))
+    return moved
+
+def activate_range(red, first, last):
+    '''Move range of records including FIRST and LAST id from where
+    they are on the INACTIVE queue to the tail of ACTIVE queue.'''
+
+    ids = [b.decode() for b in red.lrange(iq, 0, -1)]
+    logging.debug('ids = %s', ids)
+    try:
+        selected = get_selected(ids, first, last)
+        logging.debug('Selected records (first,last) = (%s,%s) %s',
+                        first, last, selected)
+    except:
+        logging.error('IGNORED. Could not select [{}:{}] from {}.'
+                        .format(first, last, ids))
+        return
+
+
+    warnings, moved = activate_ids(red, selected)
+    print('Activated %d records' % moved)
+    return moved
 
 
 ##############################################################################
@@ -327,11 +343,15 @@ def main():
                         nargs=2)
 
     parser.add_argument('--deactivate',
-                        help='Move records to INACTIVE',
+                        help='Move selected records to INACTIVE',
                         nargs=2)
     parser.add_argument('--activate',
-                        help='Move records to ACTIVE',
+                        help='Move selected records to ACTIVE',
                         nargs=2)
+    parser.add_argument('--redo',
+                        help='Move ALL records to ACTIVE',
+                        action='store_true'
+                        )
 
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -400,6 +420,9 @@ def main():
 
     if args.activate:
         activate_range(red, args.activate[0], args.activate[1])
+
+    if args.redo:
+        activate_all(red)
 
     if args.info:
         info(red)

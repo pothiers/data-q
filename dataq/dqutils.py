@@ -35,7 +35,7 @@ def get_keyword(keyword, kwargs):
     return kwargs[keyword]
 
 
-# !!! Refactor to use this func where "tail" used in actions.py !!!
+# Refactor to use this func where "tail" used in actions.py !!!
 def mirror_path(src_root, fname, new_root, new_base=None):
     'Return path in new root constructed from src_root and fname.'
     head = os.path.dirname(fname)
