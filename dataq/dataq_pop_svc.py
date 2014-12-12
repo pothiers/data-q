@@ -66,10 +66,12 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     pl.srem(aqs, rid)
                     logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
                     try:
-                        result = action(rec, qcfg=qcfg, dirs=dirs)
+                        #Wait "seconds_between_retry" if ecnt > 0 !!!
+                        result = action(rec, qname, qcfg=qcfg, dirs=dirs)
                         logging.debug('DONE action: "{}" => {}'
                                       .format(action_name, result))
                     except Exception as ex:
+                        # action failed
                         pl.hincrby(ecnt, rid)
 
                         # pl.hget() returns StrictPipeline; NOT value of key!
@@ -170,5 +172,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-    

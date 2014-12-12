@@ -12,17 +12,17 @@ from . import irods_utils as iu
 from . import dqutils as du
 from . import dataq_cli as dqc
 
-def echo00(rec, **kwargs):
+def echo00(rec, qname, **kwargs):
     "For diagnostics (never fails)"
     prop_fail = 0.00
-    print('Action=echo00: rec={} kwargs={}'.format(rec, kwargs))
+    print('[{}] Action=echo00: rec={} kwargs={}'.format(qname, rec, kwargs))
     # randomize success to simulate errors on cmds
     return random.random() >= prop_fail
 
-def echo30(rec, **kwargs):
+def echo30(rec, qname, **kwargs):
     "For diagnostics (fails 30% of the time)"
     prop_fail = 0.30
-    print('Action=echo30: rec={} kwargs={}'.format(rec, kwargs))
+    print('[{}] Action=echo30: rec={} kwargs={}'.format(qname, rec, kwargs))
     # randomize success to simulate errors on cmds
     return random.random() >= prop_fail
 
@@ -44,7 +44,7 @@ def push_to_q(dq_host, dq_port, fname, checksum):
         sock.close()
 
 
-def network_move(rec, **kwargs):
+def network_move(rec, qname, **kwargs):
     "Transfer from Mountain to Valley"
     logging.debug('ACTION: network_move()')
     for p in ['qcfg', 'dirs']:
@@ -57,8 +57,9 @@ def network_move(rec, **kwargs):
     dirs=kwargs['dirs']
     logging.debug('dirs={}'.format(dirs))
 
-    dq_host = qcfg['submit']['dq_host']
-    dq_port = qcfg['submit']['dq_port']
+    nextq = qcfg['transfer']['next_queue']
+    dq_host = qcfg[nextq]['dq_host']
+    dq_port = qcfg[nextq]['dq_port']
 
     #!irods_root = kwargs['irods_root']  # eg. '/tempZone/'
     source_root = qcfg['transfer']['cache_dir']
@@ -89,21 +90,22 @@ def network_move(rec, **kwargs):
 
 
 
-def submit(rec, **kwargs):
+def submit(rec, qname, **kwargs):
     "Try to modify headers and submit FITS to archive; or push to Mitigate"
     logging.debug('ACTION: submit()')
     import redis
     qcfg = du.get_keyword('qcfg', kwargs)
-    dq_host = qcfg['submit']['dq_host']
-    dq_port = qcfg['submit']['dq_port']
+    dq_host = qcfg[qname]['dq_host']
+    dq_port = qcfg[qname]['dq_port']
 
-    archive_root = qcfg['submit']['archive_dir']
-    noarc_root =  qcfg['submit']['noarchive_dir']
-    irods_root =  qcfg['submit']['mirror_irods'] # '/tempZone/mountain_mirror/'
+    archive_root = qcfg[qname]['archive_dir']
+    noarc_root =  qcfg[qname]['noarchive_dir']
+    irods_root =  qcfg[qname]['mirror_irods'] # '/tempZone/mountain_mirror/'
     #! mitag_root = '/var/tada/mitigate/' 
 
     # eg. /tempZone/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
     ifname = rec['filename']            # absolute path
+    checksum = rec['checksum']          
     tail = os.path.relpath(ifname, irods_root) # changing part of path tail
 
     ##
@@ -125,28 +127,8 @@ def submit(rec, **kwargs):
         # is FITS
         fname = du.move(noarc_root, fname, archive_root)
         try:
-            fname = tada.submit.submit_to_archive(fname, qcfg)
+            fname = tada.submit.submit_to_archive(fname, checksum, qname, qcfg)
         except Exception as sex:
-            #! # We should really do several automatic re-submits first!!
-            #! logging.error(
-            #!     'FAILED submit_to_archive({}). Pushing to Mitigation'
-            #!     .format(fname))
-            #! # move NOARC to MITIG directory
-            #! mfname = os.path.join(mitag_root, tail)
-            #! #!os.rename(fname, mfname)
-            #! du.move(archive_root, fname, mitag_root, os.path.basename(fname))
-            #! logging.debug('Moved to: {}'.format(mfname))
-            #! 
-            #! # deactivate!!
-            #! # see dataq_cli.py:deactivate_range()
-            #! red = redis.StrictRedis()
-            #! try:
-            #!     dqc.deactivate_range(red, rec['checksum'], rec['checksum'])
-            #! except Exception as ex:
-            #!     logging.error('Could not Deactivate {}: {}'.format(mfname, ex))
-            #! else:
-            #!     logging.debug('Deactivated {}'.format(mfname))
-            #!     # Person should monitor submit.deactive!!
             raise sex
         else:
             logging.info('PASSED submit_to_archive({}).'  .format(fname))
@@ -154,7 +136,7 @@ def submit(rec, **kwargs):
     return True
 # END submit() action
 
-def mitigate(rec, **kwargs):
+def mitigate(rec, qname, **kwargs):
     pass
 
 action_lut = dict(

@@ -12,27 +12,33 @@ Q_REQUIRED_FIELDS = {'name', 'type', 'dq_host', 'dq_port',
                  }
 
 TYPE_SPECIFIC_REQ_FIELDS = dict(
-    MOUNTAIN = {'cache_dir',
-                'mirror_irods',
-                },
-    VALLEY = { 'mirror_irods',
-               'archive_irods',
-               'archive_dir',
-               'noarchive_dir',
-               },
-    )
-               
+    MOUNTAIN={
+        'cache_dir',
+        'mirror_irods',
+        'next_queue',
+    },
+    VALLEY={
+        'mirror_irods',
+        'archive_irods',
+        'archive_dir',
+        'noarchive_dir',
+    },
+)
+
 def get_config_lut(config):
     "Return dictionary indexed by queue name."
     return dict([[q['name'], q] for q in config['queues']])
 
 
-def validate_config(cfg, fname=None, qnames=[]):
+def validate_config(cfg, fname=None, qnames=None):
+    "Make sure config has the fields we expect."
+    if qnames == None:
+        qnames = list()
     if 'dirs' not in cfg:
         raise Exception('No "dirs" field in {}'.format(fname))
     if 'queues' not in cfg:
         raise Exception('No "queues" field in {}'.format(fname))
-    
+
     for q in cfg['queues']:
         fields = set(q.keys())
         missing = Q_REQUIRED_FIELDS - fields
@@ -43,15 +49,15 @@ def validate_config(cfg, fname=None, qnames=[]):
                                 fname,
                                 missing
                             ))
-        qs_missing = TYPE_SPECIFIC_REQ_FIELDS[q['type']] - fields 
+        qs_missing = TYPE_SPECIFIC_REQ_FIELDS[q['type']] - fields
         if  len(qs_missing) > 0:
             raise Exception('Queue "{}" in {} is missing fields: {}'
                             .format(
-                                q.get('name','UNKNOWN'),
+                                q.get('name', 'UNKNOWN'),
                                 fname,
                                 qs_missing
                             ))
-    
+
     missingqs = set(qnames) - set([d['name'] for d in cfg['queues']])
     if len(missingqs) > 0:
         raise Exception('Config in {} is missing required queues {}.'
@@ -62,7 +68,6 @@ def validate_config(cfg, fname=None, qnames=[]):
                             ', '.join(qnames),
                         ))
 
-    
 def get_config(queue_names, json_filename='/etc/tada/dq.conf'):
     """Read multi-queue config from json_filename.  Validate its
 contents. Insure queue_names are all in the list of named queues."""

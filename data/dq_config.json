@@ -1,52 +1,73 @@
 {
-    "__COMMENT": "Configuration info for data-queues",
+    "_COMMENT": "Configuration info for data-queues",
+    "_COMMENT": "Add config file validation to: data-queue/dataq/config.py",
+    "_COMMENT": "maximum_queue_size for NEWFIRM should be 25000",
     "dirs": {
-	"log_dir": "/var/log/tada/",
-	"run_dir": "/var/run/tada/",
-	"_COMMENT.config_dir": "/etc/tada"
+        "log_dir": "/var/log/tada/",
+        "run_dir": "/var/run/tada/",
+        "_COMMENT.config_dir": "/etc/tada"
     },
     "queues" : [
         {
-            "name": "transfer",
-	    "type": "MOUNTAIN",
             "_DESCRIPTION": "Files to be moved from Mountain Cache (on Mountain) to Mountain Mirror (on Valley).",
-            "cache_dir": "/var/tada/mountain_cache/",
-            "mirror_irods": "/tempZone/mountain_mirror/",
+            "name": "transfer",
+            "type": "MOUNTAIN",
+            "action_name": "network_move",
+            "maximum_errors_per_record": 0,
+            "seconds_between_retry": 1,
+            "maxium_queue_size": 11000,
             "dq_host": "mountain.test.noao.edu",
             "dq_port": 9988,       
-            "action_name": "network_move",
-            "maximum_errors_per_record": 0, 
-            "maxium_queue_size": 11000
+            
+            "_COMMENT": "type specific fields follow",
+            "next_queue": "submit",
+            "cache_dir": "/var/tada/mountain_cache/",
+            "mirror_irods": "/tempZone/mountain_mirror/",
+            
+            "_END": "dummy"
         },
         {
-            "name": "submit",
-	    "type": "VALLEY",
             "_DESCRIPTION": "Files that have been submitted for saving.",
-            "mirror_irods":  "/tempZone/mountain_mirror/",
-	    "archive_irods": "/tempZone/archive/",
-	    "archive_dir": "/var/tada/archive/",
-	    "noarchive_dir": "/var/tada/noarchive/",
-	    "_COMMENT.example_path": "/noao-tuc-z1/mtn/20140930/kp4m/2014B-0108/k4m_141001_121310_ori.hdr",
-            "dq_host": "172.16.1.12", "_COMMENT": "Use host NAME!!!",
-            "dq_port": 9988,       
+            "name": "submit",
+            "type": "VALLEY",
             "action_name": "submit",
             "maximum_errors_per_record": 0, 
-            "maxium_queue_size": 11000
+            "seconds_between_retry": 1,
+            "maxium_queue_size": 11000,
+            "dq_host": "172.16.1.12", "_COMMENT": "Use host NAME!!!",
+            "dq_port": 9988,       
+            
+            "_COMMENT": "type specific fields follow",
+            "ingest_host": "valley.test.noao.edu",
+            "ingest_port": 6666,
+            
+            "mirror_irods":  "/tempZone/mountain_mirror/",
+            "archive_irods": "/tempZone/archive/",
+            "archive_dir": "/var/tada/archive/",
+            "noarchive_dir": "/var/tada/noarchive/",
+            
+            "_COMMENT.example_path": "/noao-tuc-z1/mtn/20140930/kp4m/2014B-0108/k4m_141001_121310_ori.hdr",
+            
+            "_END": "dummy"
         },
         {   "_COMMENT": "NOT USED!!!",
-            "name": "mitigate",
-	    "type": "VALLEY",
             "_DESSCRIPTION": "Files that should find their way to the archive, but have something wrong with them.",
-            "mirror_irods":  "/tempZone/mountain_mirror/",
-	    "archive_irods": "/tempZone/archive/",
-	    "archive_dir": "/var/tada/archive/",
-	    "noarchive_dir": "/var/tada/noarchive/",
-            "dq_host": "valley.test.noao.edu",
-            "dq_port": 9989,       
+            "name": "mitigate",
+            "type": "VALLEY",
             "action_name": "echo00",
             "maximum_errors_per_record": 0, 
-            "maxium_queue_size": 11000
+            "maxium_queue_size": 11000,
+            "dq_host": "valley.test.noao.edu",
+            "dq_port": 9989,       
+            
+            "_COMMENT": "type specific fields follow",      
+            "mirror_irods":  "/tempZone/mountain_mirror/",
+            "archive_irods": "/tempZone/archive/",
+            "archive_dir": "/var/tada/archive/",
+            "noarchive_dir": "/var/tada/noarchive/",
+            
+            "_END": "dummy"
         }
     ]
 }
-    
+
