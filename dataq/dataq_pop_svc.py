@@ -13,6 +13,7 @@ import logging
 import json
 import time
 import sys
+import traceback
 
 import redis
 
@@ -72,6 +73,9 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                                       .format(action_name, result))
                     except Exception as ex:
                         # action failed
+                        logging.debug('Action "{}" failed: {}'
+                                      .format(action_name, ex))
+                        dqutils.traceback_if_debug()
                         pl.hincrby(ecnt, rid)
 
                         # pl.hget() returns StrictPipeline; NOT value of key!
@@ -121,8 +125,8 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 
 ##############################################################################
 
-
 def main():
+
     'Parse args, then start reading queue forever.'
     possible_qnames = ['transfer', 'submit', 'mitigate']
     parser = argparse.ArgumentParser(
@@ -156,7 +160,7 @@ def main():
     logging.basicConfig(level=log_level,
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
-    logging.debug('Debug output is enabled!!')
+    logging.debug('\nDebug output is enabled!!')
     ###########################################################################
 
 

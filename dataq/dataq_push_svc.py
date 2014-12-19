@@ -63,23 +63,6 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
             self.wfile.write(bytes('Pushed ID=%s'%checksum, 'UTF-8'))
         pl.execute()
 
-#!class App():
-#!    def __init__(self, host, port, pidfile='/var/run/dataq/dqpush.pid'):
-#!        self.stdin_path = '/dev/null'
-#!        #! self.stdout_path = '/tmp/dataq-push-stdout.log'
-#!        #! self.stderr_path = '/tmp/dataq-push-stderr.log'
-#!        self.stdout_path = '/home/pothiers/tmp/dataq-push-stdout.log'
-#!        self.stderr_path = '/home/pothiers/tmp/dataq-push-stderr.log'
-#!        self.pidfile_path =  pidfile
-#!        self.pidfile_timeout = 5
-#!
-#!    def run(self):
-#!        logging.debug('Processing records for dataqueue from TCP host:port='%(host,port))
-#!        server = socketserver.TCPServer((host, port),
-#!                                        DataRecordTCPHandler)
-#!        server.r = redis.StrictRedis()
-#!        server.cfg = cfg
-#!        server.serve_forever()
 
 ##############################################################################
 def main():
@@ -90,12 +73,6 @@ def main():
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
         )
 
-    #!parser.add_argument('--host',
-    #!                    help='Host to bind to',
-    #!                    default='localhost')
-    #!parser.add_argument('--port',
-    #!                    help='Port to bind to',
-    #!                    type=int, default=9988)
     parser.add_argument('--cfg',
                         help='Configuration file',
                         type=argparse.FileType('r'))

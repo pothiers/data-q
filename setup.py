@@ -17,15 +17,15 @@ setup(
     # http://packaging.python.org/en/latest/tutorial.html#version
     version='0.0.dev4',
 
-    description='Simulate a data-flow described by a graphviz diagram',
+    description='Manage data-queue with associated Action on pop',
     long_description=long_description,
 
     # The project's main homepage.
     url='https://github.com/pothiers/dataq',
 
     # Author details
-    author='S.Pothier',
-    author_email='pothier@email.noao.com',
+    author='The Python Packaging Authority',
+    author_email='pypa-dev@googlegroups.com',
 
     # Choose your license
     license='MIT',
@@ -87,6 +87,7 @@ setup(
             'dqcli=dataq.dataq_cli:main',
             'dqsvcpush=dataq.dataq_push_svc:main',
             'dqsvcpop=dataq.dataq_pop_svc:main',
+            'file_type=dataq.file_type:main',
         ],
     },
 )

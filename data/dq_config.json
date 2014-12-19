@@ -31,15 +31,19 @@
             "name": "submit",
             "type": "VALLEY",
             "action_name": "submit",
+            "action_fail_probability": 0.10, "_COMMENT": "REMOVE THIS!!!",
             "maximum_errors_per_record": 0, 
             "seconds_between_retry": 1,
             "maxium_queue_size": 11000,
             "dq_host": "172.16.1.12", "_COMMENT": "Use host NAME!!!",
-            "dq_port": 9988,       
+            "dq_port": 9988,
             
             "_COMMENT": "type specific fields follow",
-            "ingest_host": "valley.test.noao.edu",
-            "ingest_port": 6666,
+	    "nsa_host": "nsaserver.pat.sdm.noao.edu",
+	    "nsa_port": 9000,
+	    "nsa_irods_host": "db5.sdm.noao.edu",
+	    "nsa_irods_port": 1247,
+            "archive_irods331": "/noao-tuc-z1/archive/",
             
             "mirror_irods":  "/tempZone/mountain_mirror/",
             "archive_irods": "/tempZone/archive/",
@@ -47,7 +51,6 @@
             "noarchive_dir": "/var/tada/noarchive/",
             
             "_COMMENT.example_path": "/noao-tuc-z1/mtn/20140930/kp4m/2014B-0108/k4m_141001_121310_ori.hdr",
-            
             "_END": "dummy"
         },
         {   "_COMMENT": "NOT USED!!!",

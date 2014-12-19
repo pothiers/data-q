@@ -2,6 +2,12 @@
 
 import os, os.path
 import logging
+import traceback
+
+def traceback_if_debug():
+    "Print traceback of logging level is set to DEBUG"
+    if logging.DEBUG == logging.getLogger().getEffectiveLevel():
+        traceback.print_exc()
 
 def decode_dict(byte_dict):
     "Convert dict containing bytes as keys and values one containing strings."
@@ -48,16 +54,7 @@ def mirror_path(src_root, fname, new_root, new_base=None):
 
 def move(src_root, src_abs_fname, dest_root, dest_basename=None):
     """Rename a subtree under src_abs_fname to one under
-dest_dir. Dest_basename defaults to base of src_abs_fname."""
-    #! # changing part of path tail
-    #! tail  = os.path.relpath(src_abs_fname, src_root)  
-    #! os.makedirs(os.path.join(dest_root, os.path.dirname(tail)),
-    #!             exist_ok=True)
-    #! logging.debug('dest_root={}, tail={}, base={}'
-    #!               .format(dest_root, tail, dest_basename))
-    #! fname = os.path.join(dest_root, os.path.dirname(tail), dest_basename)
-    #! os.rename(src_abs_fname, fname)
-
+dest_root. Dest_basename defaults to base of src_abs_fname."""
     dest_fname = mirror_path(src_root, src_abs_fname, dest_root,
                              new_base=dest_basename)
     logging.debug('move [base={}] {} to {}'

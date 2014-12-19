@@ -91,51 +91,13 @@ def network_move(rec, qname, **kwargs):
 
 
 def submit(rec, qname, **kwargs):
-    "Try to modify headers and submit FITS to archive; or push to Mitigate"
+    """Try to modify headers and submit FITS to archive. If anything fails 
+more than N times, move the queue entry to Inactive. (where N is the 
+configuration field: maximum_errors_per_record)
+"""
     logging.debug('ACTION: submit()')
-    import redis
-    qcfg = du.get_keyword('qcfg', kwargs)
-    dq_host = qcfg[qname]['dq_host']
-    dq_port = qcfg[qname]['dq_port']
-
-    archive_root = qcfg[qname]['archive_dir']
-    noarc_root =  qcfg[qname]['noarchive_dir']
-    irods_root =  qcfg[qname]['mirror_irods'] # '/tempZone/mountain_mirror/'
-    #! mitag_root = '/var/tada/mitigate/' 
-
-    # eg. /tempZone/mountain_mirror/other/vagrant/16/text/plain/fubar.txt
-    ifname = rec['filename']            # absolute path
-    checksum = rec['checksum']          
-    tail = os.path.relpath(ifname, irods_root) # changing part of path tail
-
-    ##
-    ## Put irods file on filesystem. We might mv it later.
-    ##
-    fname = os.path.join(noarc_root, tail)
-    try:
-        iu.irods_get(fname, ifname)
-    except:
-        logging.warning('Failed to get file from irods on Valley.')
-        raise
-
-    new_fname = None
-    if magic.from_file(fname).decode().find('FITS image data') < 0:
-        # not FITS
-        # Remove files if noarc_root is taking up too much space (FIFO)!!!
-        logging.info('Non-fits file put in: {}'.format(fname))
-    else:
-        # is FITS
-        fname = du.move(noarc_root, fname, archive_root)
-        try:
-            fname = tada.submit.submit_to_archive(fname, checksum, qname, qcfg)
-        except Exception as sex:
-            raise sex
-        else:
-            logging.info('PASSED submit_to_archive({}).'  .format(fname))
-
-    return True
-# END submit() action
-
+    return tada.submit.submit(rec,qname, **kwargs)
+    
 def mitigate(rec, qname, **kwargs):
     pass
 
