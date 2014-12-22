@@ -47,7 +47,6 @@
             
             "mirror_irods":  "/tempZone/mountain_mirror/",
             "archive_irods": "/tempZone/archive/",
-            "archive_dir": "/var/tada/archive/",
             "noarchive_dir": "/var/tada/noarchive/",
             
             "_COMMENT.example_path": "/noao-tuc-z1/mtn/20140930/kp4m/2014B-0108/k4m_141001_121310_ori.hdr",

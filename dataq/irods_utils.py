@@ -24,7 +24,7 @@ def irods_file_type(irods_fname):
 
 # NB: The command must be installed in the server/bin/cmd directory
 #     of the irods server
-def irods_prep_fits_for_ingest(irods_filepath):
+def irods_prep_fits_for_ingest(irods_filepath, mirror_idir, archive_idir):
     """Given an irods absolute path that points to a FITS file, add fields
 to its header and rename it so it is (probably) suitable for Archive
 Ingest. The name returned is an irods absolute ipath to a hdr file
@@ -32,7 +32,8 @@ that can be passed as the hdrUri argument to the NSAserver."""
 
     hdr_ifname = None
     cmdline = ['iexecmd', '-P', irods_filepath,
-               'prep_fits_for_ingest {}'.format(irods_filepath) ]
+               'prep_fits_for_ingest {} {} {}'
+               .format(irods_filepath, mirror_idir, archive_idir) ]
     try:
         hdr_ifname = subprocess.check_output(cmdline).decode('utf-8')[:-1]
     except subprocess.CalledProcessError as ex:
@@ -59,6 +60,18 @@ def irods_mv(src_ipath, dst_ipath):
         raise
     return out
 
+
+def irods_mv_dir(src_idir, dst_idir):
+    """Move irods directory (collection) from one place to another,
+creating desting parent directories if needed."""
+    try:
+        subprocess.check_output(['imkdir', '-p', dst_idir])
+        subprocess.check_output(['imv', src_idir, dst_idir])
+    except subprocess.CalledProcessError as ex:
+        logging.error('Execution failed: {}'.format(ex))
+        raise
+    
+
 def irods_put(local_fname, irods_fname):
     'Put file to irods, creating parent directories if needed.'
     #os.chmod(local_fname, 0o664)
@@ -84,6 +97,7 @@ def irods_get(local_fname, irods_fname):
         raise
 
 def irods_unreg(irods_path):
+
     "unregister the file or collection"
     out = None
     cmdline = ['irm', '-U', irods_path]

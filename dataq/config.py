@@ -20,7 +20,6 @@ TYPE_SPECIFIC_REQ_FIELDS = dict(
     VALLEY={
         'mirror_irods',
         'archive_irods',
-        'archive_dir',
         'noarchive_dir',
     },
 )
