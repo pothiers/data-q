@@ -16,6 +16,18 @@ import logging
 # iquest "%s" "select DATA_PATH where DATA_NAME = 'k4n_20141114_122626_oru.fits'"
 
 def irods_get_physical(ipath):
+
+    #!!! Open access to vault
+    out = 'NONE'
+    cmdline = ['iexecmd', 'open_vault.sh']
+    try:
+        out = subprocess.check_output(cmdline)
+    except subprocess.CalledProcessError as ex:
+        cmd = ' '.join(cmdline)
+        logging.error('Execution failed: {}; {} => {}'
+                      .format(ex, cmd, ex.output))
+        raise
+
     sel = ("select DATA_PATH where COLL_NAME = '{}' and DATA_NAME = '{}'"
            .format(os.path.dirname(ipath), os.path.basename(ipath)))
     cmdline = ['iquest', '"%s"', sel]
@@ -132,8 +144,8 @@ def irods_mv_tree(src_ipath, dst_ipath):
 
 #!!!
 def bridge_copy(src_ipath, mirror_idir, archive_idir): # dst_ipath, qname, qcfg
-    logging.warning('EXECUTING STUB!!!: bridge_copy({}, {}, {})'
-                    .format(src_ipath, mirror_idir, archive_idir))
+    logging.error('EXECUTING STUB!!!: bridge_copy({}, {}, {})'
+                  .format(src_ipath, mirror_idir, archive_idir))
     dst_ipath = src_ipath.replace(mirror_idir, archive_idir)
     irods_mv_tree(src_ipath, dst_ipath) #need to cross over irods INSTANCES!!!
     return dst_ipath
