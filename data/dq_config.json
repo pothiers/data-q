@@ -2,14 +2,16 @@
     "_COMMENT": "Configuration info for data-queues",
     "_COMMENT": "Add config file validation to: data-queue/dataq/config.py",
     "_COMMENT": "maximum_queue_size for NEWFIRM should be 25000",
+
     "dirs": {
         "log_dir": "/var/log/tada/",
         "run_dir": "/var/run/tada/",
         "_COMMENT.config_dir": "/etc/tada"
     },
+    
     "queues" : [
         {
-            "_DESCRIPTION": "Files to be moved from Mountain Cache (on Mountain) to Mountain Mirror (on Valley).",
+            "_DESCRIPTION": "Files to move from Mountain Cache (on Mountain) to Mountain Mirror (on Valley).",
             "name": "transfer",
             "type": "MOUNTAIN",
             "action_name": "network_move",
@@ -27,11 +29,11 @@
             "_END": "dummy"
         },
         {
-            "_DESCRIPTION": "Files that have been submitted for saving.",
+            "_DESCRIPTION": "Files to submit for saving.",
             "name": "submit",
             "type": "VALLEY",
             "action_name": "submit",
-            "action_fail_probability": 0.10, "_COMMENT": "REMOVE THIS!!!",
+            "action_fail_probability": 0.00, "_COMMENT": "REMOVE THIS!!!",
             "maximum_errors_per_record": 0, 
             "seconds_between_retry": 1,
             "maxium_queue_size": 11000,
@@ -39,35 +41,18 @@
             "dq_port": 9988,
             
             "_COMMENT": "type specific fields follow",
-	    "nsa_host": "nsaserver.pat.sdm.noao.edu",
-	    "nsa_port": 9000,
-	    "nsa_irods_host": "db5.sdm.noao.edu",
-	    "nsa_irods_port": 1247,
-            "archive_irods331": "/noao-tuc-z1/archive/",
+            
+            "nsa_host": "nsaserver.pat.sdm.noao.edu",
+            "nsa_port": 9000,
+            "nsa_irods_host": "db5.sdm.noao.edu",
+            "nsa_irods_port": 1247,
+            "__COMMENT_archive_irods331": "/noao-tuc-z1/archive/",
+            "archive_irods": "/tempZone/archive/",
             
             "mirror_irods":  "/tempZone/mountain_mirror/",
-            "archive_irods": "/tempZone/archive/",
             "noarchive_dir": "/var/tada/noarchive/",
             
             "_COMMENT.example_path": "/noao-tuc-z1/mtn/20140930/kp4m/2014B-0108/k4m_141001_121310_ori.hdr",
-            "_END": "dummy"
-        },
-        {   "_COMMENT": "NOT USED!!!",
-            "_DESSCRIPTION": "Files that should find their way to the archive, but have something wrong with them.",
-            "name": "mitigate",
-            "type": "VALLEY",
-            "action_name": "echo00",
-            "maximum_errors_per_record": 0, 
-            "maxium_queue_size": 11000,
-            "dq_host": "valley.test.noao.edu",
-            "dq_port": 9989,       
-            
-            "_COMMENT": "type specific fields follow",      
-            "mirror_irods":  "/tempZone/mountain_mirror/",
-            "archive_irods": "/tempZone/archive/",
-            "archive_dir": "/var/tada/archive/",
-            "noarchive_dir": "/var/tada/noarchive/",
-            
             "_END": "dummy"
         }
     ]

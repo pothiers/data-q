@@ -6,7 +6,7 @@ import os, sys, string, argparse, logging
 
 
 # +++ Add code here if TADA needs to handle additional types of files!!!
-def file_type(filename):
+def file_type(filename, ifname):
     """For use by irods iexecmd. Output an abstracted file type string.
  MIME isn't always good enough."""
     if magic.from_file(filename).decode().find('FITS image data') >= 0:
@@ -28,6 +28,9 @@ def main():
         )
     parser.add_argument('infile',  help='Input file',
                         type=argparse.FileType('r') )
+    parser.add_argument('irods_name',
+                        help='Full path in iRODS',
+                        )
 
     parser.add_argument('--loglevel',      help='Kind of diagnostic output',
                         choices = ['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
@@ -50,7 +53,7 @@ def main():
     logging.debug('Debug output is enabled by nitfConvert!!!')
 
 
-    file_type(args.infile)
+    file_type(args.infile, args.irods_name)
 
 if __name__ == '__main__':
     main()

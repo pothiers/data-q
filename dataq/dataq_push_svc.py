@@ -67,7 +67,7 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
 ##############################################################################
 def main():
     'Parse args, then start reading queue forever.'
-    possible_qnames = ['transfer', 'submit', 'mitigate']
+    possible_qnames = ['transfer', 'submit']
     parser = argparse.ArgumentParser(
         description='Read data from socket and push to Data Queue',
         epilog='EXAMPLE: %(prog)s --host localhost --port 9988'

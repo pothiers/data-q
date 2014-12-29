@@ -128,7 +128,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 def main():
 
     'Parse args, then start reading queue forever.'
-    possible_qnames = ['transfer', 'submit', 'mitigate']
+    possible_qnames = ['transfer', 'submit']
     parser = argparse.ArgumentParser(
         description='Data Queue service',
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
