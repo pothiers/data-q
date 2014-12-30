@@ -4,6 +4,7 @@ provided functions should be in this file."""
 import os.path
 import subprocess
 import logging
+import tempfile
 
 # imeta add -d /tempZone/mirror/vagrant/32/no_PROPID.fits x 1
 # imeta set -d /tempZone/mirror/vagrant/32/no_PROPID.fits y 2
@@ -142,12 +143,22 @@ def irods_mv_tree(src_ipath, dst_ipath):
 
 
 
-#!!!
-def bridge_copy(src_ipath, mirror_idir, archive_idir): # dst_ipath, qname, qcfg
-    logging.error('EXECUTING STUB!!!: bridge_copy({}, {}, {})'
-                  .format(src_ipath, mirror_idir, archive_idir))
-    dst_ipath = src_ipath.replace(mirror_idir, archive_idir)
-    irods_mv_tree(src_ipath, dst_ipath) #need to cross over irods INSTANCES!!!
+# This does expensieve iget, iput combination!!!
+# When Archive moves up to irods 4, we can dispense with this nonsense!
+def bridge_copy(src_ipath, dst_ipath): 
+    logging.error(':EXECUTING TEMPORARY HACK!!!: bridge_copy({}, {})'
+                  .format(src_ipath, dst_ipath))
+    
+    with tempfile.NamedTemporaryFile() as f:
+        cmdargs1 = ['iget', '-f', src_ipath, f.name]
+        try:
+            subprocess.check_output(cmdargs1)
+        except subprocess.CalledProcessError as ex:
+            logging.error('Execution failed: {}; {}'
+                          .format(ex,
+                                  ex.output.decode('utf-8')))
+            raise
+        irods_put(f.name, dst_ipath)
     return dst_ipath
 
 
@@ -170,8 +181,8 @@ def irods_put(local_fname, irods_fname ):
                                  os.path.dirname(irods_fname)])
         subprocess.check_output(['iput', '-f', '-K', 
                                  local_fname, irods_fname])
-        top_ipath = '/' + irods_fname.split('/')[1]
-        subprocess.check_output(['ichmod', '-r', 'own', 'public', top_ipath])
+        #! top_ipath = '/' + irods_fname.split('/')[1]
+        #! subprocess.check_output(['ichmod', '-r', 'own', 'public', top_ipath])
     except subprocess.CalledProcessError as ex:
         logging.error('Execution failed: {}'.format(ex))
         raise
@@ -185,7 +196,7 @@ def irods_get(local_fname, irods_fname):
         subprocess.check_output(cmdargs1)
         subprocess.check_output(cmdargs2)
     except subprocess.CalledProcessError as ex:
-        logging.error('Execution failed: {}'.format(ex))
+        logging.error('Execution failed: {}; {}'.format(ex, ex.output))
         raise
 
 def irods_unreg(irods_path):
