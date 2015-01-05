@@ -26,7 +26,7 @@ def irods_get_physical(ipath):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
 
     sel = ("select DATA_PATH where COLL_NAME = '{}' and DATA_NAME = '{}'"
@@ -38,7 +38,7 @@ def irods_get_physical(ipath):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
     return out.decode('utf-8').strip('\n \"')
     
@@ -58,7 +58,7 @@ def irods_file_type(irods_fname):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
     typeStr = out.decode('utf-8')[:-1]
 
@@ -70,7 +70,7 @@ def irods_file_type(irods_fname):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
 
     return typeStr
@@ -93,7 +93,7 @@ that can be passed as the hdrUri argument to the NSAserver."""
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
 
     # set "prep" attribute of fits_ifile
@@ -111,7 +111,7 @@ def irods_set_meta(ifname, att_name, att_value):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
 
 
@@ -126,7 +126,7 @@ def irods_mv(src_ipath, dst_ipath):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
     return out
 
@@ -138,7 +138,7 @@ def irods_mv_tree(src_ipath, dst_ipath):
                                  os.path.dirname(dst_ipath)])
         subprocess.check_output(['imv', src_ipath, dst_ipath])
     except subprocess.CalledProcessError as ex:
-        logging.error('Execution failed: {}'.format(ex))
+        logging.error('Execution failed: {}; {}'.format(ex, ex.output.decode('utf-8')))
         raise
 
 
@@ -170,7 +170,8 @@ creating desting parent directories if needed."""
         subprocess.check_output(['imkdir', '-p', dst_idir])
         subprocess.check_output(['imv', src_idir, dst_idir])
     except subprocess.CalledProcessError as ex:
-        logging.error('Execution failed: {}'.format(ex))
+        logging.error('Execution failed: {}; {}'
+                      .format(ex, ex.output.decode('utf-8')))
         raise
 
 def irods_put(local_fname, irods_fname ):
@@ -184,7 +185,8 @@ def irods_put(local_fname, irods_fname ):
         #! top_ipath = '/' + irods_fname.split('/')[1]
         #! subprocess.check_output(['ichmod', '-r', 'own', 'public', top_ipath])
     except subprocess.CalledProcessError as ex:
-        logging.error('Execution failed: {}'.format(ex))
+        logging.error('Execution failed: {}; {}'
+                      .format(ex, ex.output.decode('utf-8')))
         raise
 
 
@@ -196,7 +198,8 @@ def irods_get(local_fname, irods_fname):
         subprocess.check_output(cmdargs1)
         subprocess.check_output(cmdargs2)
     except subprocess.CalledProcessError as ex:
-        logging.error('Execution failed: {}; {}'.format(ex, ex.output))
+        logging.error('Execution failed: {}; {}'
+                      .format(ex, ex.output.decode('utf-8')))
         raise
 
 def irods_unreg(irods_path):
@@ -209,7 +212,7 @@ def irods_unreg(irods_path):
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
     return out
 
@@ -225,7 +228,7 @@ located. The full path must be supplied for both paths."""
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
 
     os.chmod(fs_path, 0o664)
@@ -235,7 +238,7 @@ located. The full path must be supplied for both paths."""
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
-                      .format(ex, cmd, ex.output))
+                      .format(ex, cmd, ex.output.decode('utf-8')))
         raise
     return out
     

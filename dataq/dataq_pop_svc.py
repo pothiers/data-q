@@ -52,25 +52,30 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         if keynameB.decode() == dummy:
             continue
         rid = ridB.decode()
-        #!logging.debug('Read Queue: got something')
+        logging.debug('Read Queue: got "{}"'.format(rid))
+        did_action = False
 
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
-            while True: # retry of clients collide on watched variables
+            while True: # retry if clients collide on watched variables
                 try:
-                    pl.watch(aq, aqs, rids, ecnt, iq, rid)
+                    #!pl.watch(aq, aqs, rids, ecnt, iq, rid)
+                    pl.watch(aq, aqs, iq)
                     rec = dqutils.decode_dict(pl.hgetall(rid))
 
                     # switch to normal pipeline mode where commands get buffered
                     pl.multi()
 
                     pl.srem(aqs, rid)
-                    logging.debug('Run action: "%s"(%s)"'%(action_name, rec))
                     try:
                         #Wait "seconds_between_retry" if ecnt > 0 !!!
-                        result = action(rec, qname, qcfg=qcfg, dirs=dirs)
-                        logging.debug('DONE action: "{}" => {}'
-                                      .format(action_name, result))
+                        if not did_action:
+                            logging.debug('RUN action: "{}"; {}"'
+                                          .format(action_name, rec))
+                            result = action(rec, qname, qcfg=qcfg, dirs=dirs)
+                            logging.debug('DONE action: "{}" => {}'
+                                          .format(action_name, result))
+                            did_action = True
                     except Exception as ex:
                         # action failed
                         logging.debug('Action "{}" failed: {}'
@@ -80,9 +85,8 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 
                         # pl.hget() returns StrictPipeline; NOT value of key!
                         # use of RED here causes us to not get incremented value
-                        ercnt = int(red.hget(ecnt,rid)) + 1 
-
-                        erall = red.hgetall(ecnt)
+                        ercnt = int(red.hget(ecnt,rid) or 0) + 1 
+                        #!erall = red.hgetall(ecnt)
                         logging.debug('Got error on action. ercnt={}'
                                       .format(ercnt))
                         #!cnt = 0 if ercnt == None else ercnt
@@ -113,15 +117,18 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                         msg = ('Action "{}" ran successfully against ({}):'
                                +' {} => {}')
                         logging.info(msg.format(action_name, rid, rec, result))
-                        pl.srem(rids, rid)
+                        #!pl.srem(rids, rid)
                     pl.save()
                     pl.execute() # execute the pipeline
                     break
-                except redis.WatchError:
+                except redis.WatchError as ex:
+                    logging.debug('Got redis.WatchError: {}'.format(ex))
                     # another client must have changed  watched vars between
                     # the time we started WATCHing them and the pipeline's
                     # execution. Our best bet is to just retry.
                     continue # while True
+        # END with pipeline
+        red.srem(rids, rid) # We are done with rid, remove it
 
 ##############################################################################
 
