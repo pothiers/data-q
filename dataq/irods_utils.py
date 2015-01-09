@@ -1,6 +1,7 @@
 """Interface to working with irods.  All of our calls to irods
 provided functions should be in this file."""
 
+import os
 import os.path
 import subprocess
 import logging
@@ -145,7 +146,7 @@ def irods_mv_tree(src_ipath, dst_ipath):
 
 # This does expensieve iget, iput combination!!!
 # When Archive moves up to irods 4, we can dispense with this nonsense!
-def bridge_copy(src_ipath, dst_ipath): 
+def bridge_copy(src_ipath, dst_ipath, remove_orig=False): 
     logging.error(':EXECUTING TEMPORARY HACK!!!: bridge_copy({}, {})'
                   .format(src_ipath, dst_ipath))
     
@@ -159,6 +160,16 @@ def bridge_copy(src_ipath, dst_ipath):
                                   ex.output.decode('utf-8')))
             raise
         irods_put(f.name, dst_ipath)
+
+    if remove_orig:
+        cmdargs2 = ['irm', '-f', '-U', src_ipath]
+        try:
+            subprocess.check_output(cmdargs2)
+        except subprocess.CalledProcessError as ex:
+            logging.error('Execution failed: {}; {}'
+                          .format(ex, ex.output.decode('utf-8')))
+            raise
+        
     return dst_ipath
 
 
@@ -190,17 +201,26 @@ def irods_put(local_fname, irods_fname ):
         raise
 
 
-def irods_get(local_fname, irods_fname):
+def irods_get(local_fname, irods_fname, remove_irods=False):
     'Get file from irods, creating local parent directories if needed.'
-    cmdargs1 = ['mkdir', '-p', os.path.dirname(local_fname)]
-    cmdargs2 = ['iget', '-f', '-K', irods_fname, local_fname]
+    os.makedirs(os.path.dirname(local_fname), exist_ok=True)
+    cmdargs1 = ['iget', '-f', '-K', irods_fname, local_fname]
     try:
         subprocess.check_output(cmdargs1)
-        subprocess.check_output(cmdargs2)
     except subprocess.CalledProcessError as ex:
         logging.error('Execution failed: {}; {}'
                       .format(ex, ex.output.decode('utf-8')))
         raise
+
+    if remove_irods:
+        cmdargs2 = ['irm', '-f', '-U', irods_fname]
+        try:
+            subprocess.check_output(cmdargs2)
+        except subprocess.CalledProcessError as ex:
+            logging.error('Execution failed: {}; {}'
+                          .format(ex, ex.output.decode('utf-8')))
+            raise
+        
 
 def irods_unreg(irods_path):
     "unregister the file or collection"
