@@ -240,7 +240,7 @@ archiveIrods = dict(
     irodsEnvFile='/sandbox/archIrodsEnv',
     irodsAuthFileName='/sandbox/archIrodsAuth'
     )
-
+    
 # For iRODS 4.0.3 servers
 tadaIrods = dict(
     irodsEnvFile='/sandbox/tadaIrodsEnv',
@@ -248,11 +248,11 @@ tadaIrods = dict(
     )
 
 def irods_put331(local_fname, irods_fname):
-    logging.debug('irods_put333({}, {})'.format(local_fname, irods_fname))
+    logging.debug('irods_put331({}, {})'.format(local_fname, irods_fname))
     
     try:
         subprocess.check_output(
-            ['/sandbox/tada/scripts/put_other_host.sh {} {}'
+            ['/sandbox/tada/scripts/iput331 {} {}'
              .format(local_fname, irods_fname)],
             stderr=subprocess.STDOUT,
             shell=True)
