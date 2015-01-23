@@ -33,7 +33,7 @@
             "name": "submit",
             "type": "VALLEY",
             "action_name": "submit",
-            "action_fail_probability": 0.00, "_COMMENT": "REMOVE THIS!!!",
+            "action_fail_probability": 0.01, "_COMMENT": "REMOVE THIS!!!",
             "maximum_errors_per_record": 0, 
             "seconds_between_retry": 1,
             "maxium_queue_size": 11000,
