@@ -33,7 +33,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 
     logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
-        #! logging.debug('Read Queue: loop')
+        logging.debug('Read Queue: loop')
 
         if red.get(actionP) == b'off':
             time.sleep(delay)
@@ -54,6 +54,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         rid = ridB.decode()
         logging.debug('Read Queue: got "{}"'.format(rid))
         did_action = False
+        success = False
 
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
@@ -78,6 +79,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                             did_action = True
                     except Exception as ex:
                         # action failed
+                        success = False
                         logging.debug('Action "{}" failed: {}'
                                       .format(action_name, ex))
                         dqutils.traceback_if_debug()
@@ -113,10 +115,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                             # failed: go to the end of the line
                             pl.lpush(aq, rid) 
                     else:
-                        # action did not raise exception
-                        msg = ('Action "{}" ran successfully against ({}):'
-                               +' {} => {}')
-                        logging.info(msg.format(action_name, rid, rec, result))
+                        success = True
                         #!pl.srem(rids, rid)
                     pl.save()
                     pl.execute() # execute the pipeline
@@ -129,6 +128,9 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     continue # while True
         # END with pipeline
         red.srem(rids, rid) # We are done with rid, remove it
+        if success:
+            msg = ('Action "{}" ran successfully against ({}): {} => {}')
+            logging.info(msg.format(action_name, rid, rec, result))
 
 ##############################################################################
 

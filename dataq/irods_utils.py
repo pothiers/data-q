@@ -7,6 +7,8 @@ import subprocess
 import logging
 import tempfile
 
+import tada.diag as diag
+
 # imeta add -d /tempZone/mirror/vagrant/32/no_PROPID.fits x 1
 # imeta set -d /tempZone/mirror/vagrant/32/no_PROPID.fits y 2
 # imeta ls  -d /tempZone/mirror/vagrant/32/no_PROPID.fits
@@ -23,6 +25,7 @@ def irods_get_physical(ipath):
     out = 'NONE'
     cmdline = ['iexecmd', 'open_vault.sh']
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -35,19 +38,22 @@ def irods_get_physical(ipath):
     cmdline = ['iquest', '"%s"', sel]
     out = 'NONE'
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
         logging.error('Execution failed: {}; {} => {}'
                       .format(ex, cmd, ex.output.decode('utf-8')))
         raise
-    return out.decode('utf-8').strip('\n \"')
+    physical_fname = out.decode('utf-8').strip('\n \"')
+    return physical_fname
 
 def irods_debug():
     """For diagnostics only."""
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         cmdline = ['ienv']
         try:
+            diag.dbgcmd(cmdline)
             out = subprocess.check_output(cmdline)
         except subprocess.CalledProcessError as ex:
             cmd = ' '.join(cmdline)
@@ -71,6 +77,7 @@ def irods_file_type(irods_fname):
     cmdline = ['iexecmd', '-P', irods_fname, 'file_type {}'.format(irods_fname)]
     out = 'NONE'
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -106,6 +113,7 @@ that can be passed as the hdrUri argument to the NSAserver."""
                'prep_fits_for_ingest {} {} {}'
                .format(irods_filepath, mirror_idir, archive_idir) ]
     try:
+        diag.dbgcmd(cmdline)
         hdr_ifname = subprocess.check_output(cmdline).decode('utf-8')[:-1]
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -124,6 +132,7 @@ def irods_set_meta(ifname, att_name, att_value):
     cmdline = ['imeta', 'set', '-d', ifname, 'prep', 'True']
     out = 'NONE'
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -140,6 +149,7 @@ def irods_mv(src_ipath, dst_ipath):
     cmdline = ['imv', src_ipath, dst_ipath]
     out = None
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -165,24 +175,25 @@ def irods_mv_tree(src_ipath, dst_ipath):
 # light-weight but dangerous.
 # Register file in irods331  to physical file under irods403.
 def fast_bridge_copy(src_ipath, dst_ipath, remove_orig=False):
-    logging.error(':Start EXECUTING TEMPORARY HACK!!!: bridge_copy({}, {})'
-                  .format(src_ipath, dst_ipath))
+    logging.warning(':Start EXECUTING FAST TEMP HACK!!!: bridge_copy({}, {})'
+                    .format(src_ipath, dst_ipath))
     local_file = irods_get_physical(src_ipath)
     irods_reg_331(local_file, dst_ipath)
 
-    logging.error(':Done EXECUTING TEMPORARY HACK!!!')
+    logging.warning(':Done EXECUTING FAST TEMP HACK!!!')
     return dst_ipath
     
 # This does expensive iget, iput combination!!!
 # When Archive moves up to irods 4, we can dispense with this nonsense!
 def bridge_copy(src_ipath, dst_ipath, remove_orig=False): 
-    logging.error(':Start EXECUTING OLD TEMPORARY HACK!!!: bridge_copy({}, {})'
+    logging.warning(':Start EXECUTING TEMPORARY HACK!!!: bridge_copy({}, {})'
                   .format(src_ipath, dst_ipath))
 
     (fd, temp_fname) = tempfile.mkstemp()
     os.close(fd)
     cmdargs1 = ['iget', '-f', src_ipath, temp_fname]
     try:
+        diag.dbgcmd(cmdargs1)
         subprocess.check_output(cmdargs1)
     except subprocess.CalledProcessError as ex:
         logging.error('Execution failed: {}; {}'
@@ -198,13 +209,14 @@ def bridge_copy(src_ipath, dst_ipath, remove_orig=False):
     if remove_orig:
         cmdargs2 = ['irm', '-f', '-U', src_ipath]
         try:
+            diag.dbgcmd(cmdargs2)
             subprocess.check_output(cmdargs2)
         except subprocess.CalledProcessError as ex:
             logging.error('Execution failed: {}; {}'
                           .format(ex, ex.output.decode('utf-8')))
             raise
         
-    logging.error(':Done EXECUTING TEMPORARY HACK!!!')
+    logging.debug(':Done EXECUTING TEMPORARY HACK!!!')
     return dst_ipath
 
 
@@ -305,6 +317,7 @@ def irods_get(local_fname, irods_fname, remove_irods=False):
     os.makedirs(os.path.dirname(local_fname), exist_ok=True)
     cmdargs1 = ['iget', '-f', '-K', irods_fname, local_fname]
     try:
+        diag.dbgcmd(cmdargs1)
         subprocess.check_output(cmdargs1)
     except subprocess.CalledProcessError as ex:
         logging.error('Execution failed: {}; {}'
@@ -314,6 +327,7 @@ def irods_get(local_fname, irods_fname, remove_irods=False):
     if remove_irods:
         cmdargs2 = ['irm', '-f', '-U', irods_fname]
         try:
+            diag.dbgcmd(cmdargs2)
             subprocess.check_output(cmdargs2)
         except subprocess.CalledProcessError as ex:
             logging.error('Execution failed: {}; {}'
@@ -327,6 +341,7 @@ def irods_unreg(irods_path):
     out = None
     cmdline = ['irm', '-U', irods_path]
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -343,6 +358,7 @@ located. The full path must be supplied for both paths."""
     out = None
     cmdline = ['imkdir', '-p', os.path.dirname(irods_path)]
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -353,6 +369,7 @@ located. The full path must be supplied for both paths."""
     os.chmod(fs_path, 0o664)
     cmdline = ['ireg',  '-K', fs_path, irods_path]
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -374,6 +391,7 @@ def irods_reg_331(fs_path, irods_path):
     out = None
     cmdline = ['imkdir', '-p', os.path.dirname(irods_path)]
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline, env=env2, shell=True)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -386,6 +404,7 @@ def irods_reg_331(fs_path, irods_path):
     os.chmod(fs_path, 0o664)
     cmdline = ['ireg',  '-K', fs_path, irods_path]
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline, env=env2, shell=True)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
@@ -400,6 +419,7 @@ def irods_reg_331(fs_path, irods_path):
 def get_irods_cksum(irods_path):
     cmdline = ['ichksum', irods_path]
     try:
+        diag.dbgcmd(cmdline)
         out = subprocess.check_output(cmdline)
     except subprocess.CalledProcessError as ex:
         cmd = ' '.join(cmdline)
