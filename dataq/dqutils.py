@@ -1,8 +1,10 @@
 "Convenience functions for data-queue."
 
-import os, os.path
+import os
+import os.path
 import logging
 import traceback
+import socket
 
 def traceback_if_debug():
     "Print traceback of logging level is set to DEBUG"
@@ -39,6 +41,24 @@ def get_keyword(keyword, kwargs):
         raise Exception('Did not get required keyword parameter: "{}" in: {}'
                         .format(keyword, kwargs))
     return kwargs[keyword]
+
+
+def push_to_q(dq_host, dq_port, fname, checksum):
+    'Push a line onto data-queue named by qname.'
+    logging.debug('push_to_q({}, {}, {})'.format(dq_host, dq_port, fname))
+    data = '{} {}\n'.format(checksum, fname)
+    # Create a socket (SOCK_STREAM means a TCP socket)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    try:
+        # Connect to server and send data
+        sock.connect((dq_host, dq_port))
+        sock.sendall(bytes(data, 'UTF-8'))
+
+        # Receive data from the server and shut down
+        received = sock.recv(1024)
+    finally:
+        sock.close()
 
 
 # Refactor to use this func where "tail" used in actions.py !!!
