@@ -26,14 +26,14 @@ if [ -f /etc/sysconfig/dataq ]; then
         . /etc/sysconfig/dataq
 fi
 
-#!!! TEMPORARY (haha) HACKS: point at pothier's install dir
+#!!! TEMPORARY (haha) HACKS: point at  $HOME install dir
 # Python3 and redis-py are required for this code. 
-export PATH=/home/pothiers/PYTHON_ENV/bin:/usr/bin:/sbin:/bin:/usr/sbin
+export PATH=$HOME/PYTHON_ENV/bin:/usr/bin:/sbin:/bin:/usr/sbin
 export pushlog=/tmp/dataq-push.log
 export poplog=/tmp/dataq-pop.log
 
 
-bdir=/home/pothiers/sandbox/data-q/src
+bdir=/sandbox/data-q/src
 dqpush=${DQPUSH-$bdir/dataq_push_svc.py}
 dqpop=${DQPOP-$bdir/dataq_pop_svc.py}
 prog=dataq

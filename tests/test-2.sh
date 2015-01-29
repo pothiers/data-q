@@ -1,11 +1,9 @@
 #!/bin/bash -e
-# Time-stamp: <07-23-2014 14:50:39 pothiers /home/pothiers/sandbox/data-q/test-2.sh>
 #
 # PURPOSE: <one line description>
 #
 # EXAMPLE:
 #
-# AUTHORS: S.Pothier
 
 
 echo "######################################################################"

@@ -54,7 +54,7 @@ LOG_SETTINGS = {
             'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'simple',
-            'filename': '/home/pothiers/logs/dataq_cli.log',
+            'filename': '/var/dataq/logs/dataq_cli.log',
             'maxBytes': 4096,
             'backupCount': 9,
         },

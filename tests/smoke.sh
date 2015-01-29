@@ -1,5 +1,4 @@
 #!/bin/bash
-# AUTHORS:    S. Pothier
 # PURPOSE:    Wrapper for smoke test
 # EXAMPLE:
 #   loadenv dq

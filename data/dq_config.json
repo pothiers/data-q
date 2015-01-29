@@ -43,10 +43,10 @@
             
             "_COMMENT": "type specific fields follow",
             
-            "nsa_host": "nsaserver.pat.sdm.noao.edu",
-            "nsa_port": 9000,
-            "nsa_irods_host": "db5.sdm.noao.edu",
-            "nsa_irods_port": 1247,
+            "arch_host": "nsaserver.pat.sdm.noao.edu",
+            "arch_port": 9000,
+            "arch_irods_host": "db5.sdm.noao.edu",
+            "arch_irods_port": 1247,
             "!!!COMMENT_mirror_irods":  "/tempZone/mountain_mirror/",
             "mirror_dir":  "/var/tada/mountain-mirror",
             "noarchive_dir": "/var/tada/noarchive",
