@@ -24,7 +24,8 @@
             "_COMMENT": "type specific fields follow",
             "next_queue": "submit",
             "cache_dir": "/var/tada/mountain_cache/",
-            "mirror_irods": "/tempZone/mountain_mirror/",
+            "!!!COMMENT_mirror_irods": "/tempZone/mountain_mirror/",
+            "mirror_dir":  "valley::mountain_mirror",
             
             "_END": "dummy"
         },
@@ -46,12 +47,12 @@
             "nsa_port": 9000,
             "nsa_irods_host": "db5.sdm.noao.edu",
             "nsa_irods_port": 1247,
-            "mirror_irods":  "/tempZone/mountain_mirror/",
-            "noarchive_dir": "/var/tada/noarchive/",
-            "archive_irods": "/tempZone/archive/",
+            "!!!COMMENT_mirror_irods":  "/tempZone/mountain_mirror/",
+            "mirror_dir":  "/var/tada/mountain-mirror",
+            "noarchive_dir": "/var/tada/noarchive",
+            "!!!COMMENT_archive_irods": "/tempZone/archive/", 
             "archive_irods331": "/noao-tuc-z1/tada/", 
 
-            "_COMMENT.example_path": "/noao-tuc-z1/mtn/20140930/kp4m/2014B-0108/k4m_141001_121310_ori.hdr",
             "_END": "dummy"
         }
     ]
