@@ -15,7 +15,7 @@ import fileinput
 
 import redis
 
-from . import config
+from tada import config
 from . import dqutils
 from . import defaultCfg
 from .dbvars import *

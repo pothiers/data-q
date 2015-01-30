@@ -17,7 +17,7 @@ import traceback
 
 import redis
 
-from . import config
+from tada import config
 from . import dqutils
 from . import default_config
 from .dbvars import *
@@ -135,7 +135,6 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 ##############################################################################
 
 def main():
-
     'Parse args, then start reading queue forever.'
     possible_qnames = ['transfer', 'submit']
     parser = argparse.ArgumentParser(
@@ -143,12 +142,6 @@ def main():
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
         )
 
-    #!parser.add_argument('--host',
-    #!                    help='Host to bind to',
-    #!                    default='localhost')
-    #!parser.add_argument('--port',
-    #!                    help='Port to bind to',
-    #!                    type=int, default=9988)
     parser.add_argument('--cfg',
                         help='Configuration file (json format)',
                         type=argparse.FileType('r'))
@@ -173,14 +166,8 @@ def main():
     ###########################################################################
 
 
-    #!cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
-    #!qcfg = dqutils.get_config_lut(cfg)[args.queue]
     qcfg, dirs = config.get_config(possible_qnames)
-
     dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])
-
-    # red = redis.StrictRedis(host=args.host, port=args.port)
-    #! process_queue_forever(red, config)
     process_queue_forever(args.queue, qcfg, dirs)
 
 if __name__ == '__main__':

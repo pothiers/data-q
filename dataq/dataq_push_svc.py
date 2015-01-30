@@ -17,7 +17,7 @@ import json
 import redis
 
 
-from . import config
+from tada import config
 from . import dqutils
 from . import default_config
 from .dbvars import *
