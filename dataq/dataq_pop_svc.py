@@ -10,11 +10,13 @@ put record back on queue.
 
 import argparse
 import logging
+import logging.config
 import json
 import time
 import sys
 import traceback
 
+import yaml
 import redis
 
 from tada import config
@@ -145,6 +147,10 @@ def main():
     parser.add_argument('--cfg',
                         help='Configuration file (json format)',
                         type=argparse.FileType('r'))
+    parser.add_argument('--logconf',
+                        help='Logging configuration file (YAML format)',
+                        default='/etc/tada/pop.yaml',
+                        type=argparse.FileType('r'))
     parser.add_argument('--queue', '-q',
                         choices=possible_qnames,
                         help='Name of queue to pop from. Must be in cfg file.')
@@ -159,9 +165,12 @@ def main():
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
         parser.error('Invalid log level: %s' % args.loglevel)
-    logging.basicConfig(level=log_level,
-                        format='%(levelname)s %(message)s',
-                        datefmt='%m-%d %H:%M')
+    #!logging.basicConfig(level=log_level,
+    #!                    format='%(levelname)s %(message)s',
+    #!                    datefmt='%m-%d %H:%M')
+    logging.config.dictConfig(yaml.load(args.logconf))
+    logging.getLogger().setLevel(log_level)
+
     logging.debug('\nDebug output is enabled!!')
     ###########################################################################
 
