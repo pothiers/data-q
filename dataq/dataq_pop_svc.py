@@ -168,7 +168,9 @@ def main():
     #!logging.basicConfig(level=log_level,
     #!                    format='%(levelname)s %(message)s',
     #!                    datefmt='%m-%d %H:%M')
-    logging.config.dictConfig(yaml.load(args.logconf))
+    logDict = yaml.load(args.logconf)
+    print('logDict={}'.format(logDict), flush=True)
+    logging.config.dictConfig(logDict)
     logging.getLogger().setLevel(log_level)
 
     logging.debug('\nDebug output is enabled!!')
