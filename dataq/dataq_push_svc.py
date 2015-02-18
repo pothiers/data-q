@@ -19,7 +19,7 @@ import redis
 
 from tada import config
 from . import dqutils
-from . import default_config
+#! from . import default_config
 from .dbvars import *
 
 class DataRecordTCPHandler(socketserver.StreamRequestHandler):
@@ -103,14 +103,13 @@ def main():
     logging.debug('Debug output is enabled!!')
     ######################################################################
 
-
-    cfg = default_config.DQ_CONFIG if args.cfg is None else json.load(args.cfg)
     qcfg, dirs = config.get_config(possible_qnames)
 
     dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])
 
     dq_host = qcfg[args.queue]['dq_host']
     dq_port = qcfg[args.queue]['dq_port']
+    logging.debug('Connect to REDIS on {}:{}'.format(dq_host,dq_port))
     server = socketserver.TCPServer((dq_host, dq_port), DataRecordTCPHandler)
     server.r = redis.StrictRedis()
     server.cfg = qcfg[args.queue]

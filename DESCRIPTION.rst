@@ -1,5 +1,5 @@
-Data flow diagram simulator
-===========================
+Description of data-queue
+=========================
 
 Software task to process a data-file list as a queue.  Focus on resiliency.
 

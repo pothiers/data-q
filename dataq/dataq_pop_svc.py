@@ -21,7 +21,7 @@ import redis
 
 from tada import config
 from . import dqutils
-from . import default_config
+#from . import default_config
 from .dbvars import *
 from .actions import *
 

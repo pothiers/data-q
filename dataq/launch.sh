@@ -20,8 +20,6 @@ else
     dqsvcpush --queue submit   2>&1 &
 fi
 
-jobs
-
 
 killdq ()
 {

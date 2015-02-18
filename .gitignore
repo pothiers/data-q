@@ -1,5 +1,6 @@
 OBSOLETE/
 tests/data-files/
+dataq-env/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
