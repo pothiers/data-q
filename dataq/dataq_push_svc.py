@@ -109,7 +109,8 @@ def main():
 
     dq_host = qcfg[args.queue]['dq_host']
     dq_port = qcfg[args.queue]['dq_port']
-    logging.debug('Connect to REDIS on {}:{}'.format(dq_host,dq_port))
+    logging.debug('Queue {} connect to REDIS on {}:{}'
+                  .format(args.queue, dq_host, dq_port))
     server = socketserver.TCPServer((dq_host, dq_port), DataRecordTCPHandler)
     server.r = redis.StrictRedis()
     server.cfg = qcfg[args.queue]
