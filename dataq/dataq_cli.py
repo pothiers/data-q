@@ -17,7 +17,6 @@ import redis
 
 from tada import config
 from . import dqutils
-from . import defaultCfg
 from .dbvars import *
 from .loggingCfg import *
 
@@ -383,7 +382,6 @@ def main():
 
 
     ############################################################################
-    #! cfg = defaultCfg.cfg if args.cfg is None else json.load(args.cfg)
     #! qcfg = config.get_config(possible_qnames)
 
     if len(sys.argv) == 1:

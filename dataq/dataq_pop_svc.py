@@ -165,15 +165,16 @@ def main():
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
         parser.error('Invalid log level: %s' % args.loglevel)
-    #!logging.basicConfig(level=log_level,
-    #!                    format='%(levelname)s %(message)s',
-    #!                    datefmt='%m-%d %H:%M')
+    logging.basicConfig(level=log_level,
+                        format='%(levelname)s %(message)s',
+                        datefmt='%m-%d %H:%M')
+    logging.debug('\nDebug output is enabled!!')
+
     logDict = yaml.load(args.logconf)
     print('logDict={}'.format(logDict), flush=True)
     logging.config.dictConfig(logDict)
     logging.getLogger().setLevel(log_level)
 
-    logging.debug('\nDebug output is enabled!!')
     ###########################################################################
 
 
