@@ -70,7 +70,7 @@ def main():
     possible_qnames = ['transfer', 'submit']
     parser = argparse.ArgumentParser(
         description='Read data from socket and push to Data Queue',
-        epilog='EXAMPLE: %(prog)s --host localhost --port 9988'
+        epilog='EXAMPLE: %(prog)s '
         )
 
     parser.add_argument('--cfg',
@@ -116,9 +116,6 @@ def main():
     server.cfg = qcfg[args.queue]
     server.serve_forever()
 
-    #! app = App(args.host, args.port)
-    #! daemon_runner = daemon.runner.DaemonRunner(app)
-    #! daemon_runner.do_action()
 
 if __name__ == '__main__':
     main()

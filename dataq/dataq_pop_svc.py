@@ -144,9 +144,9 @@ def main():
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
         )
 
-    parser.add_argument('--cfg',
-                        help='Configuration file (json format)',
-                        type=argparse.FileType('r'))
+    #!parser.add_argument('--cfg',
+    #!                    help='Configuration file (json format)',
+    #!                    type=argparse.FileType('r'))
     parser.add_argument('--logconf',
                         help='Logging configuration file (YAML format)',
                         default='/etc/tada/pop.yaml',

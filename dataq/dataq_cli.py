@@ -288,23 +288,17 @@ def activate_range(red, first, last):
 
 def main():
     'Parse command line (a mini-interpreter) and do the work.'
-    possible_qnames = ['transfer', 'submit', 'mitigate']
+    possible_qnames = ['transfer', 'submit']
     parser = argparse.ArgumentParser(
         description='Modify or display the data queue',
         epilog='EXAMPLE: %(prog)s --summary'
     )
-    #!parser.add_argument('--host',
-    #!                    help='Host to bind to',
-    #!                    default='localhost')
-    #!parser.add_argument('--port',
-    #!                    help='Port to bind to',
-    #!                    type=int, default=9988)
-    parser.add_argument('--cfg',
-                        help='Configuration file',
-                        type=argparse.FileType('r'))
-    parser.add_argument('--queue', '-q',
-                        choices=possible_qnames,
-                        help='Name of queue to pop from. Must be in cfg file.')
+    #!parser.add_argument('--cfg',
+    #!                    help='Configuration file',
+    #!                    type=argparse.FileType('r'))
+    #!parser.add_argument('--queue', '-q',
+    #!                    choices=possible_qnames,
+    #!                    help='Name of queue to pop from. Must be in cfg file.')
 
     parser.add_argument('--summary', '-s',
                         help='Show summary of queue contents.',

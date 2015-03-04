@@ -57,7 +57,10 @@ def push_to_q(dq_host, dq_port, fname, checksum):
 
         # Receive data from the server and shut down
         received = sock.recv(1024)
+    except:
+        raise
     finally:
+        logging.debug('pushed line: {})'.format(bytes(data, 'UTF-8')))
         sock.close()
 
 
