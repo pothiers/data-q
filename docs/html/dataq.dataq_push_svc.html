@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module dataq.dataq_push_svc</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="dataq.html"><font color="#ffffff">dataq</font></a>.dataq_push_svc</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/pothiers/sandbox/tada/env_tada/lib/python3.4/site-packages/dataq-0.0.dev7-py3.4.egg/dataq/dataq_push_svc.py">/home/pothiers/sandbox/tada/env_tada/lib/python3.4/site-packages/dataq-0.0.dev7-py3.4.egg/dataq/dataq_push_svc.py</a></font></td></tr></table>
+    <p><tt>Read&nbsp;data&nbsp;records&nbsp;from&nbsp;socket&nbsp;and&nbsp;push&nbsp;to&nbsp;queue.<br>
+&nbsp;<br>
+Record:&nbsp;&lt;md5sum&gt;&nbsp;&lt;absolute_filename&gt;&nbsp;[&lt;others&gt;&nbsp;...]<br>
+&nbsp;<br>
+The&nbsp;checksum&nbsp;provided&nbsp;for&nbsp;each&nbsp;data&nbsp;record&nbsp;is&nbsp;used&nbsp;as&nbsp;an&nbsp;ID.&nbsp;&nbsp;If&nbsp;the<br>
+checksum&nbsp;of&nbsp;two&nbsp;records&nbsp;is&nbsp;the&nbsp;same,&nbsp;we&nbsp;assume&nbsp;the&nbsp;data&nbsp;is.&nbsp;So&nbsp;we&nbsp;can<br>
+throw&nbsp;one&nbsp;of&nbsp;them&nbsp;away.</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="argparse.html">argparse</a><br>
+<a href="tada.config.html">tada.config</a><br>
+</td><td width="25%" valign=top><a href="dataq.dqutils.html">dataq.dqutils</a><br>
+<a href="json.html">json</a><br>
+</td><td width="25%" valign=top><a href="logging.html">logging</a><br>
+<a href="redis.html">redis</a><br>
+</td><td width="25%" valign=top><a href="socketserver.html">socketserver</a><br>
+<a href="sys.html">sys</a><br>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="socketserver.html#StreamRequestHandler">socketserver.StreamRequestHandler</a>(<a href="socketserver.html#BaseRequestHandler">socketserver.BaseRequestHandler</a>)
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="dataq.dataq_push_svc.html#DataRecordTCPHandler">DataRecordTCPHandler</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="DataRecordTCPHandler">class <strong>DataRecordTCPHandler</strong></a>(<a href="socketserver.html#StreamRequestHandler">socketserver.StreamRequestHandler</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Process&nbsp;records&nbsp;from&nbsp;TCP&nbsp;socket.<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="dataq.dataq_push_svc.html#DataRecordTCPHandler">DataRecordTCPHandler</a></dd>
+<dd><a href="socketserver.html#StreamRequestHandler">socketserver.StreamRequestHandler</a></dd>
+<dd><a href="socketserver.html#BaseRequestHandler">socketserver.BaseRequestHandler</a></dd>
+<dd><a href="builtins.html#object">builtins.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="DataRecordTCPHandler-handle"><strong>handle</strong></a>(self)</dt></dl>
+
+<hr>
+Methods inherited from <a href="socketserver.html#StreamRequestHandler">socketserver.StreamRequestHandler</a>:<br>
+<dl><dt><a name="DataRecordTCPHandler-finish"><strong>finish</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="DataRecordTCPHandler-setup"><strong>setup</strong></a>(self)</dt></dl>
+
+<hr>
+Data and other attributes inherited from <a href="socketserver.html#StreamRequestHandler">socketserver.StreamRequestHandler</a>:<br>
+<dl><dt><strong>disable_nagle_algorithm</strong> = False</dl>
+
+<dl><dt><strong>rbufsize</strong> = -1</dl>
+
+<dl><dt><strong>timeout</strong> = None</dl>
+
+<dl><dt><strong>wbufsize</strong> = 0</dl>
+
+<hr>
+Methods inherited from <a href="socketserver.html#BaseRequestHandler">socketserver.BaseRequestHandler</a>:<br>
+<dl><dt><a name="DataRecordTCPHandler-__init__"><strong>__init__</strong></a>(self, request, client_address, server)</dt></dl>
+
+<hr>
+Data descriptors inherited from <a href="socketserver.html#BaseRequestHandler">socketserver.BaseRequestHandler</a>:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-main"><strong>main</strong></a>()</dt><dd><tt>Parse&nbsp;args,&nbsp;then&nbsp;start&nbsp;reading&nbsp;queue&nbsp;forever.</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>actionP</strong> = 'actionFlag'<br>
+<strong>aq</strong> = 'activeq'<br>
+<strong>aqs</strong> = 'activeq_set'<br>
+<strong>dummy</strong> = 'dummy_aq'<br>
+<strong>ecnt</strong> = 'errorcnt'<br>
+<strong>iq</strong> = 'inactiveq'<br>
+<strong>iqs</strong> = 'inactiveq_set'<br>
+<strong>readP</strong> = 'readFlag'<br>
+<strong>rids</strong> = 'record_ids'</td></tr></table>
+</body></html>

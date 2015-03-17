@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module dataq.dataq_cli</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="dataq.html"><font color="#ffffff">dataq</font></a>.dataq_cli</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/pothiers/sandbox/tada/env_tada/lib/python3.4/site-packages/dataq-0.0.dev7-py3.4.egg/dataq/dataq_cli.py">/home/pothiers/sandbox/tada/env_tada/lib/python3.4/site-packages/dataq-0.0.dev7-py3.4.egg/dataq/dataq_cli.py</a></font></td></tr></table>
+    <p><tt>Provide&nbsp;commands&nbsp;(switches)&nbsp;that&nbsp;can&nbsp;be&nbsp;run&nbsp;to&nbsp;modify&nbsp;or&nbsp;display&nbsp;the&nbsp;<br>
+data&nbsp;queue.</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="argparse.html">argparse</a><br>
+<a href="tada.config.html">tada.config</a><br>
+<a href="dataq.dqutils.html">dataq.dqutils</a><br>
+</td><td width="25%" valign=top><a href="fileinput.html">fileinput</a><br>
+<a href="json.html">json</a><br>
+<a href="logging.html">logging</a><br>
+</td><td width="25%" valign=top><a href="pprint.html">pprint</a><br>
+<a href="redis.html">redis</a><br>
+<a href="socket.html">socket</a><br>
+</td><td width="25%" valign=top><a href="sys.html">sys</a><br>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-activate_all"><strong>activate_all</strong></a>(red)</dt><dd><tt>Move&nbsp;ALL&nbsp;records&nbsp;from&nbsp;INACTIVE&nbsp;queue&nbsp;to&nbsp;the&nbsp;tail&nbsp;of&nbsp;ACTIVE&nbsp;queue.</tt></dd></dl>
+ <dl><dt><a name="-activate_ids"><strong>activate_ids</strong></a>(red, selected)</dt></dl>
+ <dl><dt><a name="-activate_range"><strong>activate_range</strong></a>(red, first, last)</dt><dd><tt>Move&nbsp;range&nbsp;of&nbsp;records&nbsp;including&nbsp;FIRST&nbsp;and&nbsp;LAST&nbsp;id&nbsp;from&nbsp;where<br>
+they&nbsp;are&nbsp;on&nbsp;the&nbsp;INACTIVE&nbsp;queue&nbsp;to&nbsp;the&nbsp;tail&nbsp;of&nbsp;ACTIVE&nbsp;queue.</tt></dd></dl>
+ <dl><dt><a name="-advance_range"><strong>advance_range</strong></a>(red, first, last)</dt><dd><tt>Move&nbsp;range&nbsp;of&nbsp;records&nbsp;incluing&nbsp;FIRST&nbsp;and&nbsp;LAST&nbsp;id&nbsp;from&nbsp;where<br>
+ever&nbsp;they&nbsp;are&nbsp;on&nbsp;the&nbsp;queue&nbsp;to&nbsp;the&nbsp;tail&nbsp;(they&nbsp;will&nbsp;become&nbsp;next&nbsp;to<br>
+pop)</tt></dd></dl>
+ <dl><dt><a name="-clear_db"><strong>clear_db</strong></a>(red)</dt><dd><tt>Delete&nbsp;queue&nbsp;related&nbsp;data&nbsp;from&nbsp;DB</tt></dd></dl>
+ <dl><dt><a name="-deactivate_range"><strong>deactivate_range</strong></a>(red, first, last)</dt><dd><tt>Move&nbsp;range&nbsp;of&nbsp;records&nbsp;including&nbsp;FIRST&nbsp;and&nbsp;LAST&nbsp;id&nbsp;from&nbsp;where<br>
+they&nbsp;are&nbsp;on&nbsp;the&nbsp;active&nbsp;queue&nbsp;to&nbsp;the&nbsp;head&nbsp;of&nbsp;INACTIVE&nbsp;queue.</tt></dd></dl>
+ <dl><dt><a name="-dump_queue"><strong>dump_queue</strong></a>(red, outfile)</dt><dd><tt>Dump&nbsp;copy&nbsp;of&nbsp;queue&nbsp;into&nbsp;this&nbsp;file</tt></dd></dl>
+ <dl><dt><a name="-get_selected"><strong>get_selected</strong></a>(ids, first, last)</dt></dl>
+ <dl><dt><a name="-info"><strong>info</strong></a>(red)</dt></dl>
+ <dl><dt><a name="-list_queue"><strong>list_queue</strong></a>(red, which)</dt><dd><tt>List&nbsp;the&nbsp;content&nbsp;of&nbsp;the&nbsp;queue.</tt></dd></dl>
+ <dl><dt><a name="-main"><strong>main</strong></a>()</dt><dd><tt>Parse&nbsp;command&nbsp;line&nbsp;(a&nbsp;mini-interpreter)&nbsp;and&nbsp;do&nbsp;the&nbsp;work.</tt></dd></dl>
+ <dl><dt><a name="-push_queue"><strong>push_queue</strong></a>(red, infiles)</dt><dd><tt>Push&nbsp;records&nbsp;(lines)&nbsp;from&nbsp;list&nbsp;of&nbsp;files.&nbsp;(or&nbsp;stdin&nbsp;if&nbsp;infiles&nbsp;is&nbsp;empty).</tt></dd></dl>
+ <dl><dt><a name="-push_string"><strong>push_string</strong></a>(red, line)</dt><dd><tt>Push&nbsp;record&nbsp;(string)&nbsp;containing:&nbsp;"checksum&nbsp;filename"</tt></dd></dl>
+ <dl><dt><a name="-summary"><strong>summary</strong></a>(red)</dt><dd><tt>Summarize&nbsp;queue&nbsp;contents.</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>LOG_SETTINGS</strong> = {'disable_existing_loggers': True, 'formatters': {'simple': {'format': '%(levelname)s %(message)s'}, 'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(message)s'}}, 'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'simple'}, 'file': {'backupCount': 9, 'class': 'logging.handlers.RotatingFileHandler', 'filename': '/var/dataq/logs/dataq_cli.log', 'formatter': 'simple', 'level': 'WARNING', 'maxBytes': 4096}, 'syslog': {'address': '/dev/log', 'class': 'logging.handlers.SysLogHandler', 'facility': 17, 'formatter': 'verbose', 'level': 'DEBUG'}}, 'loggers': {'dataq.cli': {'handlers': ['console'], 'level': 'WARNING'}}, 'version': 1}<br>
+<strong>actionP</strong> = 'actionFlag'<br>
+<strong>aq</strong> = 'activeq'<br>
+<strong>aqs</strong> = 'activeq_set'<br>
+<strong>dummy</strong> = 'dummy_aq'<br>
+<strong>ecnt</strong> = 'errorcnt'<br>
+<strong>iq</strong> = 'inactiveq'<br>
+<strong>iqs</strong> = 'inactiveq_set'<br>
+<strong>readP</strong> = 'readFlag'<br>
+<strong>rids</strong> = 'record_ids'</td></tr></table>
+</body></html>
