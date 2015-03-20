@@ -112,8 +112,6 @@ def push_queue(red, infiles):
     with fileinput.input(files=infiles) as infile:
         for line in infile:
             prio = 0
-            #!(fname, checksum, size) = line.strip().split()
-            #!rec = dict(list(zip(['filename', 'size'], [fname, int(size)])))
             (checksum, fname, *others) = line.strip().split()
             count = 0 if len(others) == 0 else int(others[0])
             rec = dict(filename=fname, checksum=checksum, error_count=count)

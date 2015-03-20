@@ -56,15 +56,17 @@ def push_to_q(dq_host, dq_port, fname, checksum):
         sock.sendall(bytes(data, 'UTF-8'))
 
         # Receive data from the server and shut down
-        received = sock.recv(1024)
+        received = sock.recv(1024, 'UTF-8')
     except:
         raise
     finally:
-        logging.debug('pushed line: {})'.format(bytes(data, 'UTF-8')))
         sock.close()
+    # sent successfully 
+    logging.debug('Sent line to  dq-push server: {})'.format(bytes(data, 'UTF-8')))
+    logging.debug('Received from dq-push server: {})'.format(received))
 
 
-# Refactor to use this func where "tail" used in actions.py !!!
+# Refactor to use this func where "tail" used in actions.py 
 def mirror_path(src_root, fname, new_root, new_base=None):
     'Return path in new root constructed from src_root and fname.'
     head = os.path.dirname(fname)

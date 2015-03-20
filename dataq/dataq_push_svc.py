@@ -22,8 +22,9 @@ from . import dqutils
 #! from . import default_config
 from .dbvars import *
 
-class DataRecordTCPHandler(socketserver.StreamRequestHandler):
-    "Process records from TCP socket."
+class DqTCPHandler(socketserver.StreamRequestHandler):
+    "Read records from TCP socket, push to DataQueue."
+    
     def handle(self):
         r = self.server.r
         cfg = self.server.cfg
@@ -34,7 +35,7 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
             logging.error('Queue is full! '
                           + 'Turning off read from socket. '
                           + 'Disabling push to queue.  '
-                          + 'To reenable: "dataq_cli --read on"  '
+                          + 'To reenable: "dqcli --read on"  '
                           )
             r.set(readP, 'off')
 
@@ -62,7 +63,7 @@ class DataRecordTCPHandler(socketserver.StreamRequestHandler):
             pl.save()
             self.wfile.write(bytes('Pushed ID=%s'%checksum, 'UTF-8'))
         pl.execute()
-
+        #!logging.debug('Data line read from socket="%s"', self.data)
 
 ##############################################################################
 def main():
@@ -100,7 +101,7 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M'
                         )
-    logging.debug('Debug output is enabled!!')
+    logging.debug('Debug output is enabled!')
     ######################################################################
 
     qcfg, dirs = config.get_config(possible_qnames)
@@ -111,7 +112,7 @@ def main():
     dq_port = qcfg[args.queue]['dq_port']
     logging.debug('Queue "{}" read data from {}:{} and push to REDIS'
                   .format(args.queue, dq_host, dq_port))
-    server = socketserver.TCPServer((dq_host, dq_port), DataRecordTCPHandler)
+    server = socketserver.TCPServer((dq_host, dq_port), DqTCPHandler)
     server.r = redis.StrictRedis()
     server.cfg = qcfg[args.queue]
     server.serve_forever()
