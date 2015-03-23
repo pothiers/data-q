@@ -84,7 +84,8 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                         success = False
                         logging.debug('Action "{}" failed: {}'
                                       .format(action_name, ex))
-                        dqutils.traceback_if_debug()
+                        #!dqutils.traceback_if_debug()
+                        traceback.print_exc()
                         pl.hincrby(ecnt, rid)
 
                         # pl.hget() returns StrictPipeline; NOT value of key!

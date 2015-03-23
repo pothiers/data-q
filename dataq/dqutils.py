@@ -6,10 +6,13 @@ import logging
 import traceback
 import socket
 
+def trace_str():
+    return ''.join(traceback.format_exc())
+
 def traceback_if_debug():
     "Print traceback of logging level is set to DEBUG"
     if logging.DEBUG == logging.getLogger().getEffectiveLevel():
-        traceback.print_exc()
+        logging.debug(''.join(traceback.format_exc()))
 
 def decode_dict(byte_dict):
     "Convert dict containing bytes as keys and values one containing strings."
@@ -49,14 +52,14 @@ def push_to_q(dq_host, dq_port, fname, checksum):
     data = '{} {}\n'.format(checksum, fname)
     # Create a socket (SOCK_STREAM means a TCP socket)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+    sock.settimeout(2) # timeout in seconds
     try:
         # Connect to server and send data
         sock.connect((dq_host, dq_port))
         sock.sendall(bytes(data, 'UTF-8'))
 
         # Receive data from the server and shut down
-        received = sock.recv(1024, 'UTF-8')
+        received = sock.recv(1024)
     except:
         raise
     finally:
