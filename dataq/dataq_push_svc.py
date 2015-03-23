@@ -26,8 +26,12 @@ class DqTCPHandler(socketserver.StreamRequestHandler):
     "Read records from TCP socket, push to DataQueue."
     
     def handle(self):
+
         r = self.server.r
         cfg = self.server.cfg
+        logging.debug('in DqTCPHandler.handle: {}, {}'
+                      .format(r, cfg))
+
         if r.get(readP) == 'off':
             return False
 
