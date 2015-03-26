@@ -6,6 +6,10 @@ import logging
 import traceback
 import socket
 
+import redis
+
+from .dbvars import *
+
 def trace_str():
     return ''.join(traceback.format_exc())
 
@@ -46,29 +50,74 @@ def get_keyword(keyword, kwargs):
     return kwargs[keyword]
 
 
-def push_to_q(dq_host, dq_port, fname, checksum):
+def push_to_q(dq_host, dq_port, fname, checksum, timeout=20):
     'Push a line onto data-queue named by qname.'
     logging.debug('push_to_q({}, {}, {})'.format(dq_host, dq_port, fname))
     data = '{} {}\n'.format(checksum, fname)
     # Create a socket (SOCK_STREAM means a TCP socket)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(2) # timeout in seconds
+    sock.settimeout(timeout) # seconds
     try:
         # Connect to server and send data
         sock.connect((dq_host, dq_port))
-        sock.sendall(bytes(data, 'UTF-8'))
+        sock.sendall(bytes(data, 'utf-8'))
 
         # Receive data from the server and shut down
-        received = sock.recv(1024)
+        received = str(sock.recv(1024), 'utf-8')
     except:
         raise
     finally:
         sock.close()
     # sent successfully 
-    logging.debug('Sent line to  dq-push server: {})'.format(bytes(data, 'UTF-8')))
+    logging.debug('Sent line to  dq-push server: {})'.format(data))
     logging.debug('Received from dq-push server: {})'.format(received))
 
+def push_direct(redis_host, redis_port, fname, checksum, cfg):
+    'Directly push a record to (possibly remote) REDIS'
+    logging.error('dbg-0: EXECUTING push_direct()')
 
+
+    # tons of options to following.  Some may be useful when more heavily used.
+    # e.g.  socket_timeout=None, socket_connect_timeout=None,
+    # socket_keepalive=None, socket_keepalive_options=None,
+    # connection_pool=None, charset='utf-8', errors='strict',
+    # decode_responses=False, retry_on_timeout=False,
+    # unix_socket_path=None
+    r = redis.StrictRedis(host=redis_host, port=redis_port)
+
+    if r.get(readP) == 'off':
+        return False
+
+    if r.llen(aq) > cfg['maxium_queue_size']:
+        logging.error('Queue is full! '
+                      + 'Turning off read from socket. '
+                      + 'Disabling push to queue.  '
+                      + 'To reenable: "dqcli --read on"  '
+                      )
+        r.set(readP, 'off')
+        return False
+    
+    rec = dict(filename=fname, checksum=checksum)
+    pl = r.pipeline()
+    pl.watch(rids, aq, aqs, checksum)
+    pl.multi()
+    if r.sismember(aqs, checksum) == 1:
+        logging.warning(': Record for %s is already in queue.'
+                        +' Ignoring duplicate.', checksum)
+    else:
+        logging.debug('push_direct:hmset {} = {}'.format(checksum, rec))
+        # add to DB
+        pl.sadd(aqs, checksum)
+        pl.lpush(aq, checksum)
+        pl.sadd(rids, checksum)
+        pl.hmset(checksum, rec)
+        pl.hset(ecnt, checksum, 0) # error count against file
+        pl.save()
+    pl.execute()
+
+    
+
+    
 # Refactor to use this func where "tail" used in actions.py 
 def mirror_path(src_root, fname, new_root, new_base=None):
     'Return path in new root constructed from src_root and fname.'

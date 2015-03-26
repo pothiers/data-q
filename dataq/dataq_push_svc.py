@@ -16,21 +16,35 @@ import json
 
 import redis
 
-
 from tada import config
 from . import dqutils
-#! from . import default_config
 from .dbvars import *
+
+class DqTcpPushServer(socketserver.TCPServer):
+    def __init__(self, server_addr, RequestHandlerClass, cfg):
+        socketserver.TCPServer.__init__(self, server_addr, RequestHandlerClass)
+        self.cfg = cfg
+        self.r = redis.StrictRedis()
+        #!self.timeout = 60*3  # seconds
+        self.handle_error = dq_handle_error
+        # Further requests will get "Connection denied" if more than this
+        # many requests come while the server is busy.
+        self.request_queue_size = 25
+        
+        
+def dq_handle_error(request, client_address):
+    logging.error('Error from DqTCPHandler.handle(): {}; {}'
+                  .format(request, client_address))
 
 class DqTCPHandler(socketserver.StreamRequestHandler):
     "Read records from TCP socket, push to DataQueue."
     
     def handle(self):
-
         r = self.server.r
         cfg = self.server.cfg
-        logging.debug('in DqTCPHandler.handle: {}, {}'
-                      .format(r, cfg))
+        logging.error('dbg-0: EXECUTING DqTCPHandler.handle()')
+
+        # refactor this and dqutils.push_direct()!!!
 
         if r.get(readP) == 'off':
             return False
@@ -42,7 +56,8 @@ class DqTCPHandler(socketserver.StreamRequestHandler):
                           + 'To reenable: "dqcli --read on"  '
                           )
             r.set(readP, 'off')
-
+            return False
+        logging.debug('About to read from socket')
         self.data = self.rfile.readline().strip().decode()
         logging.debug('Data line read from socket="%s"', self.data)
         #!(fname,checksum,size) = self.data.split() #! specific to our APP
@@ -58,6 +73,7 @@ class DqTCPHandler(socketserver.StreamRequestHandler):
                             +' Ignoring duplicate.', checksum)
             self.wfile.write(bytes('Ignored ID=%s'%checksum, 'UTF-8'))
         else:
+            logging.debug('DqTCPHandler::hmset {} = {}'.format(checksum, rec))
             # add to DB
             pl.sadd(aqs, checksum)
             pl.lpush(aq, checksum)
@@ -114,11 +130,21 @@ def main():
 
     dq_host = qcfg[args.queue]['dq_host']
     dq_port = qcfg[args.queue]['dq_port']
+    serveraddr = (dq_host, dq_port)
     logging.debug('Queue "{}" read data from {}:{} and push to REDIS'
                   .format(args.queue, dq_host, dq_port))
-    server = socketserver.TCPServer((dq_host, dq_port), DqTCPHandler)
+    server = socketserver.TCPServer(serveraddr, DqTCPHandler)
+    server.handle_error = dq_handle_error
     server.r = redis.StrictRedis()
     server.cfg = qcfg[args.queue]
+    
+    # Further requests will get "Connection denied" if more than this
+    # many requests come while the server is busy.
+    server.request_queue_size = 25
+
+    #!server = DqTcpPushServer(serveraddr, DqTCPHandler, qcfg[args.queue])
+    
+    logging.debug('.Server={}'.format(server))
     server.serve_forever()
 
 

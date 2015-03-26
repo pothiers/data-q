@@ -106,6 +106,7 @@ def dump_queue(red, outfile):
 
 def push_queue(red, infiles):
     'Push records (lines) from list of files. (or stdin if infiles is empty).'
+    logging.error('dbg-0: EXECUTING push_queue()')
     warnings = 0
     loaded = 0
 
@@ -125,6 +126,7 @@ def push_queue(red, infiles):
                                   +' Ignoring duplicate.', checksum)
                 warnings += 1
             else:
+                logging.debug('push_queue::hmset {} = {}'.format(checksum, rec))
                 # add to DB
                 pl.sadd(aqs, checksum)
                 pl.lpush(aq, checksum)
@@ -137,6 +139,7 @@ def push_queue(red, infiles):
 
 def push_string(red, line):
     'Push record (string) containing: "checksum filename"'
+    logging.error('dbg-0: EXECUTING push_string()')
     warnings = 0
     loaded = 0
 
@@ -154,6 +157,7 @@ def push_string(red, line):
                           +' Ignoring duplicate.', checksum)
         warnings += 1
     else:
+        logging.debug('push_string::hmset {} = {}'.format(checksum, rec))
         # add to DB
         pl.sadd(aqs, checksum)
         pl.lpush(aq, checksum)
