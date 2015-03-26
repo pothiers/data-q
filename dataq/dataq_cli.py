@@ -302,6 +302,7 @@ def main():
     #!                    choices=possible_qnames,
     #!                    help='Name of queue to pop from. Must be in cfg file.')
 
+    parser.add_argument('--version', action='version', version='%(prog)s 1.0.2')
     parser.add_argument('--summary', '-s',
                         help='Show summary of queue contents.',
                         action='store_true')

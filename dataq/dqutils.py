@@ -74,7 +74,8 @@ def push_to_q(dq_host, dq_port, fname, checksum, timeout=20):
 
 def push_direct(redis_host, redis_port, fname, checksum, cfg):
     'Directly push a record to (possibly remote) REDIS'
-    logging.error('dbg-0: EXECUTING push_direct()')
+    logging.error('dbg-0.0: EXECUTING push_direct({}, {}, {}, {}, {})'
+                  .format(redis_host, redis_port, fname, checksum, cfg))
 
 
     # tons of options to following.  Some may be useful when more heavily used.
@@ -98,24 +99,36 @@ def push_direct(redis_host, redis_port, fname, checksum, cfg):
         return False
     
     rec = dict(filename=fname, checksum=checksum)
-    pl = r.pipeline()
-    pl.watch(rids, aq, aqs, checksum)
-    pl.multi()
-    if r.sismember(aqs, checksum) == 1:
-        logging.warning(': Record for %s is already in queue.'
-                        +' Ignoring duplicate.', checksum)
-    else:
-        logging.debug('push_direct:hmset {} = {}'.format(checksum, rec))
-        # add to DB
-        pl.sadd(aqs, checksum)
-        pl.lpush(aq, checksum)
-        pl.sadd(rids, checksum)
-        pl.hmset(checksum, rec)
-        pl.hset(ecnt, checksum, 0) # error count against file
-        pl.save()
-    pl.execute()
-
-    
+    #!pl = r.pipeline()
+    # buffer all commands done by pipeline, make command list atomic
+    with r.pipeline() as pl:
+        while True: # retry if clients collide on watched variables
+            try:
+                pl.watch(rids, aq, aqs, checksum)
+                pl.multi()
+                if r.sismember(aqs, checksum) == 1:
+                    logging.warning(': Record for {} is already in queue.'
+                                    +' Ignoring duplicate.'.format(checksum))
+                else:
+                    logging.error('dbg-1: push_direct:hmset {} = {}'
+                                  .format(checksum, rec))
+                    # add to DB
+                    pl.sadd(aqs, checksum)
+                    pl.lpush(aq, checksum)
+                    pl.sadd(rids, checksum)
+                    pl.hmset(checksum, rec)
+                    pl.hset(ecnt, checksum, 0) # error count against file
+                pl.save()
+                pl.execute()
+                logging.error('dbg-2: push_direct: save()')
+                break
+            except redis.WatchError as ex:
+                logging.debug('Got redis.WatchError: {}'.format(ex))
+                # another client must have changed  watched vars between
+                # the time we started WATCHing them and the pipeline's
+                # execution. Our best bet is to just retry.
+                continue # while True
+        # END: with pipeline
 
     
 # Refactor to use this func where "tail" used in actions.py 
