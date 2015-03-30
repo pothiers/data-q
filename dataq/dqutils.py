@@ -52,7 +52,9 @@ def get_keyword(keyword, kwargs):
 
 def push_to_q(dq_host, dq_port, fname, checksum, timeout=20):
     'Push a line onto data-queue named by qname.'
-    logging.debug('push_to_q({}, {}, {})'.format(dq_host, dq_port, fname))
+    logging.error('dbg-0.0: EXECUTING push_to_q({}, {}, {}, {}, timeout={})'
+                  .format(dq_host, dq_port, fname, checksum, timeout))
+
     data = '{} {}\n'.format(checksum, fname)
     # Create a socket (SOCK_STREAM means a TCP socket)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,21 +74,76 @@ def push_to_q(dq_host, dq_port, fname, checksum, timeout=20):
     logging.debug('Sent line to  dq-push server: {})'.format(data))
     logging.debug('Received from dq-push server: {})'.format(received))
 
+# May options for StrictRedis.  Some may be useful when more heavily used.
+# Alas, they are not well documented.
+# e.g.  socket_timeout=None, socket_connect_timeout=None,
+# socket_keepalive=None, socket_keepalive_options=None,
+# connection_pool=None, charset='utf-8', errors='strict',
+# decode_responses=False, retry_on_timeout=False,
+# unix_socket_path=None
+
+
+def push_records(host, port, records, max_qsize):
+    'records :: list(dict(filename, checksum))'
+    r = redis.StrictRedis(host=host, port=port,
+                          socket_keepalive=True,
+                          retry_on_timeout=True )
+    if r.get(readP) == 'off':
+        return False
+    
+
+    if r.llen(aq) > max_qsize:
+        logging.error('Queue is full! '
+                      + 'Turning off read from socket. '
+                      + 'Disabling push to queue.  '
+                      + 'To reenable: "dqcli --read on"  '
+                      )
+        r.set(readP, 'off')
+        return False
+    
+    for rec in records:
+        checksum = rec['checksum']
+        if r.sismember(aqs, checksum) == 1:
+            logging.warning(': Record for {} is already in queue.'
+                            +' Ignoring duplicate.'.format(checksum))
+            continue
+        # buffer all commands done by pipeline, make command list atomic
+        with r.pipeline() as pl:
+            while True: # retry if clients collide on watched variables
+                try:
+                    pl.watch(rids, aq, aqs, checksum)
+                    pl.multi()
+                    # add to DB
+                    pl.sadd(aqs, checksum)
+                    pl.lpush(aq, checksum)
+                    pl.sadd(rids, checksum)
+                    pl.hmset(checksum, rec)
+                    pl.hset(ecnt, checksum, 0) # error count against file
+                    # Could put following outside REC loop to save time!!!
+                    pl.save()
+                    pl.execute()
+                    break
+                except redis.WatchError as ex:
+                    logging.debug('Got redis.WatchError: {}'.format(ex))
+                    # another client must have changed  watched vars between
+                    # the time we started WATCHing them and the pipeline's
+                    # execution. Our best bet is to just retry.
+                    continue # while True
+            # END: with pipeline
+    
 def push_direct(redis_host, redis_port, fname, checksum, cfg):
     'Directly push a record to (possibly remote) REDIS'
-    logging.error('dbg-0.0: EXECUTING push_direct({}, {}, {}, {}, {})'
-                  .format(redis_host, redis_port, fname, checksum, cfg))
 
-
-    # tons of options to following.  Some may be useful when more heavily used.
-    # e.g.  socket_timeout=None, socket_connect_timeout=None,
-    # socket_keepalive=None, socket_keepalive_options=None,
-    # connection_pool=None, charset='utf-8', errors='strict',
-    # decode_responses=False, retry_on_timeout=False,
-    # unix_socket_path=None
-    r = redis.StrictRedis(host=redis_host, port=redis_port)
+    r = redis.StrictRedis(host=redis_host, port=redis_port,
+                          socket_keepalive=True,
+                          retry_on_timeout=True )
 
     if r.get(readP) == 'off':
+        return False
+
+    if r.sismember(aqs, checksum) == 1:
+        logging.warning('Record for {} is already in queue. Ignoring duplicate.'
+                        .format(checksum))
         return False
 
     if r.llen(aq) > cfg['maxium_queue_size']:
@@ -99,28 +156,21 @@ def push_direct(redis_host, redis_port, fname, checksum, cfg):
         return False
     
     rec = dict(filename=fname, checksum=checksum)
-    #!pl = r.pipeline()
+
     # buffer all commands done by pipeline, make command list atomic
     with r.pipeline() as pl:
         while True: # retry if clients collide on watched variables
             try:
                 pl.watch(rids, aq, aqs, checksum)
                 pl.multi()
-                if r.sismember(aqs, checksum) == 1:
-                    logging.warning(': Record for {} is already in queue.'
-                                    +' Ignoring duplicate.'.format(checksum))
-                else:
-                    logging.error('dbg-1: push_direct:hmset {} = {}'
-                                  .format(checksum, rec))
-                    # add to DB
-                    pl.sadd(aqs, checksum)
-                    pl.lpush(aq, checksum)
-                    pl.sadd(rids, checksum)
-                    pl.hmset(checksum, rec)
-                    pl.hset(ecnt, checksum, 0) # error count against file
+                # add to DB
+                pl.sadd(aqs, checksum)
+                pl.lpush(aq, checksum)
+                pl.sadd(rids, checksum)
+                pl.hmset(checksum, rec)
+                pl.hset(ecnt, checksum, 0) # error count against file
                 pl.save()
                 pl.execute()
-                logging.error('dbg-2: push_direct: save()')
                 break
             except redis.WatchError as ex:
                 logging.debug('Got redis.WatchError: {}'.format(ex))

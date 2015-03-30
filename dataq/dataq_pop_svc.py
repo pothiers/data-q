@@ -15,8 +15,8 @@ import json
 import time
 import sys
 import traceback
-
 import yaml
+
 import redis
 
 from tada import config
@@ -62,13 +62,14 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         with red.pipeline() as pl:
             while True: # retry if clients collide on watched variables
                 try:
-                    #!pl.watch(aq, aqs, rids, ecnt, iq, rid)
                     pl.watch(aq, aqs, iq)
                     rec = dqutils.decode_dict(pl.hgetall(rid))
+                    if len(rec) == 0:
+                        raise Exception('No record found for rid={}'
+                                        .format(rid))
 
                     # switch to normal pipeline mode where commands get buffered
                     pl.multi()
-
                     pl.srem(aqs, rid)
                     try:
                         #Wait "seconds_between_retry" if ecnt > 0 !!!
@@ -82,19 +83,16 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     except Exception as ex:
                         # action failed
                         success = False
-                        logging.debug('Action "{}" failed: {}'
-                                      .format(action_name, ex))
-                        #!dqutils.traceback_if_debug()
-                        traceback.print_exc()
+                        logging.debug('Action "{}" failed: {}; {}'
+                                      .format(action_name,
+                                              ex,
+                                              dqutils.trace_str()))
                         pl.hincrby(ecnt, rid)
-
+                        logging.debug('dbg-1')
                         # pl.hget() returns StrictPipeline; NOT value of key!
                         # use of RED here causes us to not get incremented value
                         ercnt = int(red.hget(ecnt,rid) or 0) + 1 
-                        #!erall = red.hgetall(ecnt)
-                        logging.debug('Got error on action. ercnt={}'
-                                      .format(ercnt))
-                        #!cnt = 0 if ercnt == None else ercnt
+                        logging.debug('dbg-2')
                         cnt = ercnt
                         logging.debug('Error(#{}) running action "{}"'
                                       .format(cnt, action_name))
@@ -129,6 +127,12 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     # the time we started WATCHing them and the pipeline's
                     # execution. Our best bet is to just retry.
                     continue # while True
+                except Exception as err:
+                    success = False
+                    pl.lpush(iq, rid)  
+                    logging.error('Unexpected exception; {}; {}'
+                                  .format(err,dqutils.trace_str()))
+                    break
         # END with pipeline
         red.srem(rids, rid) # We are done with rid, remove it
         if success:
@@ -177,7 +181,6 @@ def main():
     logging.getLogger().setLevel(log_level)
 
     ###########################################################################
-
 
     qcfg, dirs = config.get_config(possible_qnames)
     dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])

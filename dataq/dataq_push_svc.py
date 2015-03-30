@@ -145,6 +145,7 @@ def main():
     #!server = DqTcpPushServer(serveraddr, DqTCPHandler, qcfg[args.queue])
     
     logging.debug('.Server={}'.format(server))
+    logging.error('dataq_push_svc is OBSOLETE')
     server.serve_forever()
 
 

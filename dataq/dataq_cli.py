@@ -104,15 +104,23 @@ def dump_queue(red, outfile):
 
 
 
-def push_queue(red, infiles):
-    'Push records (lines) from list of files. (or stdin if infiles is empty).'
+def push_queue(redis_host, redis_port, infiles, max_qsize):
+    recs = list()
+    with fileinput.input(files=infiles) as infile:
+        for line in infile:
+            (checksum, fname, *others) = line.strip().split()
+            count = 0 if len(others) == 0 else int(others[0])
+            recs.append(dict(filename=fname, checksum=checksum, error_count=count))
+    dqutils.push_records(redis_host, redis_port, recs, max_qsize)
+    
+def OLD_push_queue(red, infiles):
+    'OBSOLETE: Push records (lines) from list of files. (or stdin if infiles is empty).'
     logging.error('dbg-0: EXECUTING push_queue()')
     warnings = 0
     loaded = 0
 
     with fileinput.input(files=infiles) as infile:
         for line in infile:
-            prio = 0
             (checksum, fname, *others) = line.strip().split()
             count = 0 if len(others) == 0 else int(others[0])
             rec = dict(filename=fname, checksum=checksum, error_count=count)
@@ -301,6 +309,10 @@ def main():
     #!parser.add_argument('--queue', '-q',
     #!                    choices=possible_qnames,
     #!                    help='Name of queue to pop from. Must be in cfg file.')
+    parser.add_argument('--queue', '-q',
+                        default='submit',
+                        choices=possible_qnames,
+                        help='Name of queue to pop from. Must be in cfg file.')
 
     parser.add_argument('--version', action='version', version='%(prog)s 1.0.2')
     parser.add_argument('--summary', '-s',
@@ -375,11 +387,14 @@ def main():
     #!                                               )
     #!logging.addHandler(handler)
     logging.debug('Debug output is enabled!!')
-    #logging.info('EXECUTING: %s',' '.join(sys.argv))
-
 
     ############################################################################
-    #! qcfg = config.get_config(possible_qnames)
+
+    qcfg, dirs = config.get_config(possible_qnames)
+    qname = args.queue
+    max_qsize = qcfg[qname]['maxium_queue_size']
+    host = qcfg[qname]['dq_host']
+    port = qcfg[qname]['redis_port']
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -403,7 +418,7 @@ def main():
         dump_queue(red, args.dump)
 
     if args.push:
-        push_queue(red, args.push)
+        push_queue(host, port, args.push, max_qsize)
     if args.pushstr:
         push_string(red, args.pushstr)
 
