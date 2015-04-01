@@ -67,70 +67,62 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
-            while True: # retry if clients collide on watched variables
+            try:
+                # switch to normal pipeline mode where commands get buffered
+                pl.multi()
+                pl.srem(aqs, rid)
                 try:
-                    #!pl.watch(aq, aqs, iq)
-
-                    # switch to normal pipeline mode where commands get buffered
-                    pl.multi()
-                    pl.srem(aqs, rid)
-                    try:
-                        if not did_action:
-                            logging.debug('RUN action: "{}"; {}"'
-                                          .format(action_name, rec))
-                            result = action(rec, qname, qcfg=qcfg, dirs=dirs)
-                            logging.debug('DONE action: "{}" => {}'
-                                          .format(action_name, result))
-                            did_action = True
-                    except Exception as ex:
-                        # action failed
-                        success = False
-                        logging.debug('Action "{}" failed: {}; {}'
-                                      .format(action_name,
-                                              ex,
-                                              du.trace_str()))
-                        pl.hincrby(ecnt, rid)
-                        logging.debug('dbg-1')
-                        # pl.hget() returns StrictPipeline; NOT value of key!
-                        # use of RED here causes us to not get incremented value
-                        logging.debug('dbg-2')
-                        logging.debug('Error(#{}) running action "{}"'
-                                      .format(error_count+1, action_name))
-                        if error_count+1 > maxerrors:
-                            msg = ('Failed to run action "{}" {} times. '
-                                   +' Max allowed is {} so moving it to the'
-                                   +' INACTIVE queue.'
-                                   +' Record={}. Exception={}')
-                            logging.error(msg.format(action_name,
-                                                     cnt, maxerrors, rec, ex))
-                            # action kept failing: move to Inactive queue
-                            pl.lpush(iq, rid)  
-                            # Person should monitor INACTIVE queue!!!
-                        else:
-                            msg = ('Failed to run action "{}" {} times. '
-                                   +' Max allowed is {} so will try again'
-                                   +' later.'
-                                   +' Record={}. Exception={}')
-                            logging.error(msg.format(action_name,
-                                                     cnt, maxerrors, rec, ex))
-                            # failed: go to the end of the line
-                            pl.lpush(aq, rid) 
-                    #!pl.srem(rids, rid)
-                    pl.save()
-                    pl.execute() # execute the pipeline
-                    break
-                except redis.WatchError as ex:
-                    logging.debug('Got redis.WatchError: {}'.format(ex))
-                    # another client must have changed  watched vars between
-                    # the time we started WATCHing them and the pipeline's
-                    # execution. Our best bet is to just retry.
-                    continue # while True
-                except Exception as err:
+                    logging.debug('RUN action: "{}"; {}"'
+                                  .format(action_name, rec))
+                    result = action(rec, qname, qcfg=qcfg, dirs=dirs)
+                    logging.debug('DONE action: "{}" => {}'
+                                  .format(action_name, result))
+                except Exception as ex:
+                    # action failed
                     success = False
-                    pl.lpush(iq, rid)  
-                    logging.error('Unexpected exception; {}; {}'
-                                  .format(err,du.trace_str()))
-                    break
+                    logging.debug('Action "{}" failed: {}; {}'
+                                  .format(action_name,
+                                          ex,
+                                          du.trace_str()))
+                    pl.hincrby(ecnt, rid)
+                    logging.debug('dbg-1')
+                    # pl.hget() returns StrictPipeline; NOT value of key!
+                    # use of RED here causes us to not get incremented value
+                    logging.debug('dbg-2')
+                    logging.debug('Error(#{}) running action "{}"'
+                                  .format(error_count+1, action_name))
+                    if error_count+1 > maxerrors:
+                        msg = ('Failed to run action "{}" {} times. '
+                               +' Max allowed is {} so moving it to the'
+                               +' INACTIVE queue.'
+                               +' Record={}. Exception={}')
+                        logging.error(msg.format(action_name,
+                                                 cnt, maxerrors, rec, ex))
+                        # action kept failing: move to Inactive queue
+                        pl.lpush(iq, rid)  
+                        # Person should monitor INACTIVE queue!!!
+                    else:
+                        msg = ('Failed to run action "{}" {} times. '
+                               +' Max allowed is {} so will try again'
+                               +' later.'
+                               +' Record={}. Exception={}')
+                        logging.error(msg.format(action_name,
+                                                 cnt, maxerrors, rec, ex))
+                        # failed: go to the end of the line
+                        pl.lpush(aq, rid) 
+                #!pl.srem(rids, rid)
+                pl.save()
+                pl.execute() # execute the pipeline
+            except redis.WatchError as ex:
+                logging.debug('Got redis.WatchError: {}'.format(ex))
+                # another client must have changed  watched vars between
+                # the time we started WATCHing them and the pipeline's
+                # execution. Our best bet is to just retry.
+            except Exception as err:
+                success = False
+                pl.lpush(iq, rid)  
+                logging.error('Unexpected exception; {}; {}'
+                              .format(err,du.trace_str()))
         # END with pipeline
         red.srem(rids, rid) # We are done with rid, remove it
         if success:
