@@ -97,10 +97,10 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                                +' INACTIVE queue.'
                                +' Record={}. Exception={}')
                         logging.error(msg.format(action_name,
-                                                 cnt, maxerrors, rec, ex))
+                                                 error_count, maxerrors,
+                                                 rec, ex))
                         # action kept failing: move to Inactive queue
                         pl.lpush(iq, rid)  
-                        # Person should monitor INACTIVE queue!!!
                     else:
                         msg = ('Failed to run action "{}" {} times. '
                                +' Max allowed is {} so will try again'
@@ -113,11 +113,6 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                 #!pl.srem(rids, rid)
                 pl.save()
                 pl.execute() # execute the pipeline
-            except redis.WatchError as ex:
-                logging.debug('Got redis.WatchError: {}'.format(ex))
-                # another client must have changed  watched vars between
-                # the time we started WATCHing them and the pipeline's
-                # execution. Our best bet is to just retry.
             except Exception as err:
                 success = False
                 pl.lpush(iq, rid)  

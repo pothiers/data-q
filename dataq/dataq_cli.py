@@ -24,21 +24,21 @@ from .loggingCfg import *
 
 def clear_db(red):
     'Delete queue related data from DB'
-    logging.info(': Resettimg everything related to data queue in redis DB.')
-    pl = red.pipeline()
+    logging.info(': Resetting everything related to data queue in redis DB.')
     ids = red.smembers(rids)
-    pl.watch(rids,aq,aqs,iq,iqs,*ids)
-    pl.multi()
-    
-    if red.scard(rids) > 0:
-        pl.hdel(ecnt,*ids) # clear error counts
-        pl.delete(*ids)
-    pl.delete(aq,aqs,iq,iqs,rids)
-    if pl.get(actionP) == None:
-        pl.set(actionP,'on')
-    if pl.get(readP) == None:
-        pl.set(readP,'on')
-    pl.execute()
+    id_cnt = len(ids)
+    with red.pipeline() as pl:
+        pl.watch(rids,aq,aqs,iq,iqs,*ids)
+        pl.multi()
+        if id_cnt > 0:
+            pl.hdel(ecnt,*ids) # clear error counts
+            pl.delete(*ids)
+        pl.delete(aq,aqs,iq,iqs,rids)
+        if pl.get(actionP) == None:
+            pl.set(actionP,'on')
+        if pl.get(readP) == None:
+            pl.set(readP,'on')
+        pl.execute()
 
 def info(red):
     pprint.pprint(red.info())
