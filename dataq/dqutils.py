@@ -18,6 +18,25 @@ def traceback_if_debug():
     if logging.DEBUG == logging.getLogger().getEffectiveLevel():
         logging.debug(''.join(traceback.format_exc()))
 
+def log_rid(r, rid, msg):
+    'Diagnostic only'
+    logging.debug('dbg-{}: {}={}'.format(msg, rid,r.hgetall(rid)))
+
+def redis_vars(r, rid):
+    'Diagnostic only'
+    prms = dict(rid=rid,
+                aq=aq,
+                aqs=aqs,
+                iq=iq,
+                ridval=r.hgetall(rid),
+                aqval=r.lrange(aq, 0, 999),
+                aqsval=r.smembers(aqs),
+                iqval=r.lrange(iq, 0, 999),
+                )
+    return ('REDIS variables: {rid}={ridval}, {aq}={aqval}, {aqs}={aqsval}, {iq}={iqval}'
+            .format(**prms))
+
+        
 def decode_dict(byte_dict):
     "Convert dict containing bytes as keys and values one containing strings."
     str_dict = dict()
@@ -129,7 +148,8 @@ def push_records(host, port, records, max_qsize):
                     # the time we started WATCHing them and the pipeline's
                     # execution. Our best bet is to just retry.
                     continue # while True
-            # END: with pipeline
+        # END: with pipeline
+        log_rid(r, checksum, 'end push_records()')
     
 def push_direct(redis_host, redis_port, fname, checksum, cfg):
     'Directly push a record to (possibly remote) REDIS'
@@ -178,8 +198,8 @@ def push_direct(redis_host, redis_port, fname, checksum, cfg):
                 # the time we started WATCHing them and the pipeline's
                 # execution. Our best bet is to just retry.
                 continue # while True
-        # END: with pipeline
-
+    # END: with pipeline
+    log_rid(r, checksum, 'end push_direct()')
     
 # Refactor to use this func where "tail" used in actions.py 
 def mirror_path(src_root, fname, new_root, new_base=None):

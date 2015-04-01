@@ -20,7 +20,7 @@ import yaml
 import redis
 
 from tada import config
-from . import dqutils
+from . import dqutils as du
 #from . import default_config
 from .dbvars import *
 from .actions import *
@@ -58,15 +58,16 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         did_action = False
         success = False
 
+        rec = du.decode_dict(red.hgetall(rid))
+        if len(rec) == 0:
+            raise Exception('No record found for rid={}'
+                            .format(rid))
+
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
             while True: # retry if clients collide on watched variables
                 try:
                     pl.watch(aq, aqs, iq)
-                    rec = dqutils.decode_dict(pl.hgetall(rid))
-                    if len(rec) == 0:
-                        raise Exception('No record found for rid={}'
-                                        .format(rid))
 
                     # switch to normal pipeline mode where commands get buffered
                     pl.multi()
@@ -86,7 +87,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                         logging.debug('Action "{}" failed: {}; {}'
                                       .format(action_name,
                                               ex,
-                                              dqutils.trace_str()))
+                                              du.trace_str()))
                         pl.hincrby(ecnt, rid)
                         logging.debug('dbg-1')
                         # pl.hget() returns StrictPipeline; NOT value of key!
@@ -131,7 +132,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     success = False
                     pl.lpush(iq, rid)  
                     logging.error('Unexpected exception; {}; {}'
-                                  .format(err,dqutils.trace_str()))
+                                  .format(err,du.trace_str()))
                     break
         # END with pipeline
         red.srem(rids, rid) # We are done with rid, remove it
@@ -183,7 +184,7 @@ def main():
     ###########################################################################
 
     qcfg, dirs = config.get_config(possible_qnames)
-    dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])
+    du.save_pid(sys.argv[0], piddir=dirs['run_dir'])
     process_queue_forever(args.queue, qcfg, dirs)
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ import sys
 import logging
 import socketserver
 import json
+import warnings
 
 import redis
 
@@ -146,6 +147,8 @@ def main():
     
     logging.debug('.Server={}'.format(server))
     logging.error('dataq_push_svc is OBSOLETE')
+    warnings.warn('dataq_push_svc is OBSOLETE', DeprecationWarning)
+    
     server.serve_forever()
 
 

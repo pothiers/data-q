@@ -1,5 +1,5 @@
 include DESCRIPTION.rst
 
 
-recursive-include docs tests 
+#! recursive-include docs tests 
 
