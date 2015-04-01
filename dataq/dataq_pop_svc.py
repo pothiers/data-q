@@ -64,13 +64,12 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 
         error_count = int(red.hincrby(ecnt, rid))
         success = True
-
         
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
             while True: # retry if clients collide on watched variables
                 try:
-                    pl.watch(aq, aqs, iq)
+                    #!pl.watch(aq, aqs, iq)
 
                     # switch to normal pipeline mode where commands get buffered
                     pl.multi()
