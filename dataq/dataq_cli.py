@@ -13,10 +13,11 @@ import pprint
 import json
 import fileinput
 
-import redis
+
 
 from tada import config
 from . import dqutils
+from . import red_utils as ru
 from .dbvars import *
 from .loggingCfg import *
 
@@ -45,6 +46,8 @@ def info(red):
 
 def summary(red):
     'Summarize queue contents.'
+    ru.force_save(red)
+
     if red.get(actionP) == None:
         red.set(actionP,'on')
     if red.get(readP) == None:
@@ -69,6 +72,7 @@ Socket READ enabled:   %(readP)s [%(readPkey)s]
 
 def list_queue(red, which):
     'List the content of the queue.'
+    ru.force_save(red)
     if which == 'records':
         print(('Records (%d):'  % (red.scard(rids),)))
         for ridB in sorted(red.smembers(rids)):
@@ -111,7 +115,7 @@ def push_queue(redis_host, redis_port, infiles, max_qsize):
             (checksum, fname, *others) = line.strip().split()
             count = 0 if len(others) == 0 else int(others[0])
             recs.append(dict(filename=fname, checksum=checksum, error_count=count))
-    dqutils.push_records(redis_host, redis_port, recs, max_qsize)
+    ru.push_records(redis_host, redis_port, recs, max_qsize)
     
 def OLD_push_queue(red, infiles):
     'OBSOLETE: Push records (lines) from list of files. (or stdin if infiles is empty).'
@@ -400,7 +404,8 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    red = redis.StrictRedis()
+    red = ru.redis_protocol()
+
     if args.clear:
         clear_db(red)
 

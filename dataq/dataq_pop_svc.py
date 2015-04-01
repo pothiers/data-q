@@ -17,18 +17,16 @@ import sys
 import traceback
 import yaml
 
-import redis
-
 from tada import config
 from . import dqutils as du
-#from . import default_config
+from . import red_utils as ru
 from .dbvars import *
 from .actions import *
 
 # GROSS: highly nested code!!!
 def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
-    red = redis.StrictRedis()
+    red = ru.redis_protocol()
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
     maxerrors = qcfg[qname]['maximum_errors_per_record']
@@ -37,32 +35,22 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     while True: # pop from queue forever
         logging.debug('Read Queue: loop')
 
-        if red.get(actionP) == b'off':
+        if not ru.action_p(red):
             time.sleep(delay)
             continue
 
-        # ALERT: being "clever" here!
-        #
-        # If actionP was turned on, and the queue isn't being filled,
-        # we will eventually pop everything from the queue and block.
-        # But then if actionP is turned OFF, we don't know yet because
-        # we are still blocking.  So next queue item will sneak by.
-        # Probably unimportant on long running system, but plays havoc
-        # with testing. To resolve, on setting actionP to off, we push
-        # to dummy to clear block.
-        (keynameB, ridB) = red.brpop([dummy, aq]) # BLOCKING pop (over key list)
-        if keynameB.decode() == dummy:
+        rid = ru.next_record(red)
+        if rid == None:
             continue
-        rid = ridB.decode()
         logging.debug('Read Queue: got "{}"'.format(rid))
-        did_action = False
+
 
         rec = du.decode_dict(red.hgetall(rid))
         if len(rec) == 0:
             raise Exception('No record found for rid={}'
                             .format(rid))
 
-        error_count = int(red.hincrby(ecnt, rid))
+        error_count = ru.get_error_count(red,rid)
         success = True
         
         # buffer all commands done by pipeline, make command list atomic
@@ -70,7 +58,8 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             try:
                 # switch to normal pipeline mode where commands get buffered
                 pl.multi()
-                pl.srem(aqs, rid)
+                #!pl.srem(aqs, rid)
+                ru.activeq_remove(pl, rid)
                 try:
                     logging.debug('RUN action: "{}"; {}"'
                                   .format(action_name, rec))
@@ -85,13 +74,14 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                                           ex,
                                           du.trace_str()))
                     pl.hincrby(ecnt, rid)
+                    error_count += 1
                     logging.debug('dbg-1')
                     # pl.hget() returns StrictPipeline; NOT value of key!
                     # use of RED here causes us to not get incremented value
                     logging.debug('dbg-2')
                     logging.debug('Error(#{}) running action "{}"'
-                                  .format(error_count+1, action_name))
-                    if error_count+1 > maxerrors:
+                                  .format(error_count, action_name))
+                    if error_count > maxerrors:
                         msg = ('Failed to run action "{}" {} times. '
                                +' Max allowed is {} so moving it to the'
                                +' INACTIVE queue.'
@@ -103,15 +93,13 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                         pl.lpush(iq, rid)  
                     else:
                         msg = ('Failed to run action "{}" {} times. '
-                               +' Max allowed is {} so will try again'
-                               +' later.'
+                               +' Max allowed is {} so will try again later.'
                                +' Record={}. Exception={}')
                         logging.error(msg.format(action_name,
                                                  cnt, maxerrors, rec, ex))
                         # failed: go to the end of the line
                         pl.lpush(aq, rid) 
                 #!pl.srem(rids, rid)
-                pl.save()
                 pl.execute() # execute the pipeline
             except Exception as err:
                 success = False
