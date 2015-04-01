@@ -56,13 +56,16 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         rid = ridB.decode()
         logging.debug('Read Queue: got "{}"'.format(rid))
         did_action = False
-        success = False
 
         rec = du.decode_dict(red.hgetall(rid))
         if len(rec) == 0:
             raise Exception('No record found for rid={}'
                             .format(rid))
 
+        error_count = int(red.hincrby(ecnt, rid))
+        success = True
+
+        
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
             while True: # retry if clients collide on watched variables
@@ -73,7 +76,6 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     pl.multi()
                     pl.srem(aqs, rid)
                     try:
-                        #Wait "seconds_between_retry" if ecnt > 0 !!!
                         if not did_action:
                             logging.debug('RUN action: "{}"; {}"'
                                           .format(action_name, rec))
@@ -92,12 +94,10 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                         logging.debug('dbg-1')
                         # pl.hget() returns StrictPipeline; NOT value of key!
                         # use of RED here causes us to not get incremented value
-                        ercnt = int(red.hget(ecnt,rid) or 0) + 1 
                         logging.debug('dbg-2')
-                        cnt = ercnt
                         logging.debug('Error(#{}) running action "{}"'
-                                      .format(cnt, action_name))
-                        if cnt > maxerrors:
+                                      .format(error_count+1, action_name))
+                        if error_count+1 > maxerrors:
                             msg = ('Failed to run action "{}" {} times. '
                                    +' Max allowed is {} so moving it to the'
                                    +' INACTIVE queue.'
@@ -116,9 +116,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                                                      cnt, maxerrors, rec, ex))
                             # failed: go to the end of the line
                             pl.lpush(aq, rid) 
-                    else:
-                        success = True
-                        #!pl.srem(rids, rid)
+                    #!pl.srem(rids, rid)
                     pl.save()
                     pl.execute() # execute the pipeline
                     break
