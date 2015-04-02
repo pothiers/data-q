@@ -6,6 +6,14 @@ import logging
 
 from .dbvars import *
 
+def decode_dict(byte_dict):
+    "Convert dict containing bytes as keys and values one containing strings."
+    str_dict = dict()
+    for k, val in list(byte_dict.items()):
+        str_dict[k.decode()] = val.decode()
+    return str_dict
+
+
 def log_rid(r, rid, msg):
     'Diagnostic only'
     logging.debug('dbg-{}: {}={}'.format(msg, rid,r.hgetall(rid)))
@@ -41,8 +49,8 @@ def redis_protocol():
 def action_p(red):
     return red.get(actionP) == b'on'
 
-def activeq_remove(red, rid):
-    red.srem(aqs, rid)    
+def remove_active(red, rid):
+    red.srem(aqs, rid)
 
 def next_record(red):
     # ALERT: being "clever" here!
@@ -55,9 +63,21 @@ def next_record(red):
     # with testing. To resolve, on setting actionP to off, we push
     # to dummy to clear block.
     (keynameB, ridB) = red.brpop([dummy, aq]) # BLOCKING pop (over key list)
-    rid = None if (keynameB.decode() == dummy) else ridB.decode()
+    if (keynameB.decode() == dummy):
+        rid = None
+    else:
+        rid =  ridB.decode()
+        red.srem(aqs, rid)
     return rid
 
+
+
+def get_record(red, rid):
+    return decode_dict(red.hgetall(rid))
+
+def remove_record(red, rid):
+    red.srem(rids, rid)
+    
 def get_error_count(red, rid):
     return int(red.hget(ecnt, rid))
 
@@ -80,7 +100,19 @@ def force_save(red):
     curr= red.lastsave()
     logging.debug('REDIS Saved: {}. (Previously: {}'.format(curr, prev))
     return curr
-    
+
+def push_to_active(red, rid):
+    logging.debug('push_to_active({})'.format(rid))
+    red.lpush(aq, rid)
+    red.sadd(aqs, rid)
+    red.sadd(rids, rid)
+
+def push_to_inactive(red, rid):
+    logging.debug('push_to_inactive({})'.format(rid))
+    red.lpush(iq, rid)
+    red.sadd(iqs, rid)
+    red.sadd(rids, rid)    
+
 ##############################################################################
 
 def push_records(host, port, records, max_qsize):

@@ -45,7 +45,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         logging.debug('Read Queue: got "{}"'.format(rid))
 
 
-        rec = du.decode_dict(red.hgetall(rid))
+        rec = ru.get_record(red,rid)
         if len(rec) == 0:
             raise Exception('No record found for rid={}'
                             .format(rid))
@@ -58,8 +58,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             try:
                 # switch to normal pipeline mode where commands get buffered
                 pl.multi()
-                #!pl.srem(aqs, rid)
-                ru.activeq_remove(pl, rid)
+                #!ru.remove_active(pl, rid)
                 try:
                     logging.debug('RUN action: "{}"; {}"'
                                   .format(action_name, rec))
@@ -70,14 +69,9 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                     # action failed
                     success = False
                     logging.debug('Action "{}" failed: {}; {}'
-                                  .format(action_name,
-                                          ex,
-                                          du.trace_str()))
+                                  .format(action_name, ex, du.trace_str()))
                     pl.hincrby(ecnt, rid)
                     error_count += 1
-                    logging.debug('dbg-1')
-                    # pl.hget() returns StrictPipeline; NOT value of key!
-                    # use of RED here causes us to not get incremented value
                     logging.debug('dbg-2')
                     logging.debug('Error(#{}) running action "{}"'
                                   .format(error_count, action_name))
@@ -90,7 +84,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                                                  error_count, maxerrors,
                                                  rec, ex))
                         # action kept failing: move to Inactive queue
-                        pl.lpush(iq, rid)  
+                        ru.push_to_inactive(pl, rid)
                     else:
                         msg = ('Failed to run action "{}" {} times. '
                                +' Max allowed is {} so will try again later.'
@@ -98,18 +92,18 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                         logging.error(msg.format(action_name,
                                                  cnt, maxerrors, rec, ex))
                         # failed: go to the end of the line
-                        pl.lpush(aq, rid) 
+                        ru.push_to_active(pl, rid)
                 #!pl.srem(rids, rid)
                 pl.execute() # execute the pipeline
             except Exception as err:
                 success = False
-                pl.lpush(iq, rid)  
+                ru.push_to_inactive(pl, rid)
                 logging.error('Unexpected exception; {}; {}'
                               .format(err,du.trace_str()))
         # END with pipeline
-        red.srem(rids, rid) # We are done with rid, remove it
         if success:
             msg = ('Action "{}" ran successfully against ({}): {} => {}')
+            ru.remove_record(red, rid)  # We are done with rid, remove it
             logging.info(msg.format(action_name, rid, rec, result))
 
 ##############################################################################

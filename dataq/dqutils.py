@@ -16,13 +16,6 @@ def traceback_if_debug():
     if logging.DEBUG == logging.getLogger().getEffectiveLevel():
         logging.debug(''.join(traceback.format_exc()))
 
-def decode_dict(byte_dict):
-    "Convert dict containing bytes as keys and values one containing strings."
-    str_dict = dict()
-    for k, val in list(byte_dict.items()):
-        str_dict[k.decode()] = val.decode()
-    return str_dict
-
 
 def save_pid(progpath, piddir='/var/run/dataq'):
     "Write the PID of this process to a file so we can kill it later."

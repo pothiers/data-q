@@ -57,7 +57,7 @@ def summary(red):
         lenActive = red.llen(aq),
         lenInactive = red.llen(iq),
         numRecords = red.scard(rids),
-        actionP = red.get(actionP).decode(),
+        actionP = red.get(actionP).decode(), 
         actionPkey = actionP,
         readP = red.get(readP).decode(),
         readPkey = readP,
@@ -77,7 +77,7 @@ def list_queue(red, which):
         print(('Records (%d):'  % (red.scard(rids),)))
         for ridB in sorted(red.smembers(rids)):
             rid = ridB.decode()
-            rec = dqutils.decode_dict(red.hgetall(rid))
+            rec = ru.get_record(red,rid)
             kvlist = sorted(list(rec.items()), key=lambda x: x[0])
             print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
         return 
@@ -90,7 +90,7 @@ def list_queue(red, which):
     print(('%s QUEUE (%s):'  % (which, len(id_list))))
     for ridB in id_list:
         rid = ridB.decode()
-        rec = dqutils.decode_dict(red.hgetall(rid))
+        rec = ru.get_record(red,rid)
         kvlist = sorted(list(rec.items()), key=lambda x: x[0])
         print(rid,':',', '.join(['%s=%s'%(k,v) for (k,v) in kvlist]))
 
@@ -100,7 +100,7 @@ def dump_queue(red, outfile):
     activeIds = set(ids)
     for ridB in ids:
         rid = ridB.decode()
-        rec = dqutils.decode_dict(red.hgetall(rid))
+        rec = ru.get_record(red,rid)
         print('%s %s %s'%(rec['filename'], rid, rec['size']),
               file=outfile,
               flush=True
