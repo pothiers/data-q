@@ -78,6 +78,9 @@ def get_record(red, rid):
 def remove_record(red, rid):
     red.srem(rids, rid)
     
+def incr_error_count(red, rid):
+    red.hincrby(ecnt, rid)
+
 def get_error_count(red, rid):
     return int(red.hget(ecnt, rid))
 
@@ -111,8 +114,41 @@ def push_to_inactive(red, rid):
     logging.debug('push_to_inactive({})'.format(rid))
     red.lpush(iq, rid)
     red.sadd(iqs, rid)
-    red.sadd(rids, rid)    
+    red.sadd(rids, rid)
 
+def queue_summary(red):
+    force_save(red)
+    val = red.get(actionP) 
+    actionPval = 'on' if val == None else val.decode()
+    val = red.get(readP)
+    readPval = 'on' if val == None else val.decode()        
+    return(dict(
+        lenActive=red.llen(aq),
+        lenInactive=red.llen(iq),
+        numRecords=red.scard(rids),
+        actionP=actionPval,
+        actionPkey=actionP,
+        readP=readPval,
+        readPkey=readP,
+        ))
+
+def log_queue_summary(red):
+    force_save(red)
+    dd = queue_summary(red)
+    del dd['actionP'], dd['actionPkey'], dd['readP'], dd['readPkey']
+    logging.debug('Q Summary: {}'.format(dd))
+
+
+def clear_trans(pl, red=None):
+    'REDIS transaction for clearing TADA elements from REDIS'
+    ids = red.smembers(rids)
+    logging.debug('Clearing REDIS DB; ids({})={}'.format(len(ids), ids))
+    if len(ids) > 0:
+        pl.delete(*ids)
+    pl.delete(aq, aqs, iq, iqs, rids, ecnt, actionP, readP, dummy)
+    pl.set(actionP, 'on')
+    pl.set(readP, 'on')
+    
 ##############################################################################
 
 def push_records(host, port, records, max_qsize):
@@ -146,8 +182,8 @@ def push_records(host, port, records, max_qsize):
                     pl.watch(rids, aq, aqs, checksum)
                     pl.multi()
                     # add to DB
-                    pl.sadd(aqs, checksum)
                     pl.lpush(aq, checksum)
+                    pl.sadd(aqs, checksum)
                     pl.sadd(rids, checksum)
                     pl.hmset(checksum, rec)
                     pl.hset(ecnt, checksum, 0) # error count against file

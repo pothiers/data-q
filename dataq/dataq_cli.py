@@ -12,8 +12,7 @@ import logging.handlers
 import pprint
 import json
 import fileinput
-
-
+from functools import partial
 
 from tada import config
 from . import dqutils
@@ -23,23 +22,25 @@ from .loggingCfg import *
 
 #! dq_logger = logging.getLogger('dataq.cli')
 
+    
 def clear_db(red):
     'Delete queue related data from DB'
-    logging.info(': Resetting everything related to data queue in redis DB.')
-    ids = red.smembers(rids)
-    id_cnt = len(ids)
-    with red.pipeline() as pl:
-        pl.watch(rids,aq,aqs,iq,iqs,*ids)
-        pl.multi()
-        if id_cnt > 0:
-            pl.hdel(ecnt,*ids) # clear error counts
-            pl.delete(*ids)
-        pl.delete(aq,aqs,iq,iqs,rids)
-        if pl.get(actionP) == None:
-            pl.set(actionP,'on')
-        if pl.get(readP) == None:
-            pl.set(readP,'on')
-        pl.execute()
+    logging.info('Resetting everything related to data queue in redis DB.')
+    #!ids = red.smembers(rids)
+    #!id_cnt = len(ids)
+    #!with red.pipeline() as pl:
+    #!    pl.watch(rids,aq,aqs,iq,iqs,*ids)
+    #!    pl.multi()
+    #!    if id_cnt > 0:
+    #!        pl.hdel(ecnt,*ids) # clear error counts
+    #!        pl.delete(*ids)
+    #!    pl.delete(aq,aqs,iq,iqs,rids)
+    #!    if pl.get(actionP) == None:
+    #!        pl.set(actionP,'on')
+    #!    if pl.get(readP) == None:
+    #!        pl.set(readP,'on')
+    #!    pl.execute()
+    red.transaction(partial(ru.clear_trans, red=red))
 
 def info(red):
     pprint.pprint(red.info())
@@ -53,15 +54,7 @@ def summary(red):
     if red.get(readP) == None:
         red.set(readP,'on')
 
-    prms = dict(
-        lenActive = red.llen(aq),
-        lenInactive = red.llen(iq),
-        numRecords = red.scard(rids),
-        actionP = red.get(actionP).decode(), 
-        actionPkey = actionP,
-        readP = red.get(readP).decode(),
-        readPkey = readP,
-        )
+    prms = ru.queue_summary(red)
     print('''
 Active queue length:   %(lenActive)d
 Inactive queue length: %(lenInactive)d

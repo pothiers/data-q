@@ -35,44 +35,40 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     while True: # pop from queue forever
         logging.debug('Read Queue: loop')
 
-        if not ru.action_p(red):
-            time.sleep(delay)
-            continue
+#!        if not ru.action_p(red):
+#!            time.sleep(delay)
+#!            continue
 
         rid = ru.next_record(red)
         if rid == None:
             continue
         logging.debug('Read Queue: got "{}"'.format(rid))
 
-
-        rec = ru.get_record(red,rid)
+        rec = ru.get_record(red, rid)
         if len(rec) == 0:
-            raise Exception('No record found for rid={}'
-                            .format(rid))
+            raise Exception('No record found for rid={}'.format(rid))
 
-        error_count = ru.get_error_count(red,rid)
+        error_count = ru.get_error_count(red, rid)
         success = True
-        
+
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
             try:
                 # switch to normal pipeline mode where commands get buffered
                 pl.multi()
-                #!ru.remove_active(pl, rid)
                 try:
                     logging.debug('RUN action: "{}"; {}"'
                                   .format(action_name, rec))
                     result = action(rec, qname, qcfg=qcfg, dirs=dirs)
-                    logging.debug('DONE action: "{}" => {}'
-                                  .format(action_name, result))
+                    logging.debug('Action passed: "{}"({}) => {}'
+                                  .format(action_name, rec, result))
                 except Exception as ex:
                     # action failed
                     success = False
-                    logging.debug('Action "{}" failed: {}; {}'
-                                  .format(action_name, ex, du.trace_str()))
-                    pl.hincrby(ecnt, rid)
+                    logging.debug('Action failed. "{}"({}): {}; {}'
+                                  .format(action_name, rec, ex, du.trace_str()))
+                    ru.incr_error_count(pl, rid)
                     error_count += 1
-                    logging.debug('dbg-2')
                     logging.debug('Error(#{}) running action "{}"'
                                   .format(error_count, action_name))
                     if error_count > maxerrors:
@@ -93,17 +89,18 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                                                  cnt, maxerrors, rec, ex))
                         # failed: go to the end of the line
                         ru.push_to_active(pl, rid)
-                #!pl.srem(rids, rid)
                 pl.execute() # execute the pipeline
             except Exception as err:
                 success = False
                 ru.push_to_inactive(pl, rid)
                 logging.error('Unexpected exception; {}; {}'
                               .format(err,du.trace_str()))
+                pl.execute() # execute the pipeline
         # END with pipeline
+        ru.log_queue_summary(red)
         if success:
-            msg = ('Action "{}" ran successfully against ({}): {} => {}')
             ru.remove_record(red, rid)  # We are done with rid, remove it
+            msg = ('Action "{}" ran successfully against ({}): {} => {}')
             logging.info(msg.format(action_name, rid, rec, result))
 
 ##############################################################################
