@@ -23,6 +23,15 @@ from . import red_utils as ru
 from .dbvars import *
 from .actions import *
 
+msghi = ('Failed to run action "{}" {} times. '
+                   +' Max allowed is {} so moving it to the'
+                   +' INACTIVE queue. Record={}.')
+msglo = ('Failed to run action "{}" {} times. '
+         'Max allowed is {} so will try again later.'
+         +' Record={}.')
+
+
+
 # GROSS: highly nested code!!!
 def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
@@ -34,6 +43,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
         logging.debug('Read Queue: loop')
+        ru.force_save(red) #!!! remove (diag)
 
 #!        if not ru.action_p(red):
 #!            time.sleep(delay)
@@ -50,43 +60,44 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 
         error_count = ru.get_error_count(red, rid)
         success = True
+        try:
+            logging.debug('RUN action: "{}"; {}"'.format(action_name, rec))
+            result = action(rec, qname, qcfg=qcfg, dirs=dirs)
+            logging.debug('Action passed: "{}"({}) => {}'
+                          .format(action_name, rec, result))
+        except Exception as ex:
+            # action failed
+            success = False
+            error_count += 1
+            ru.incr_error_count(red, rid)
+
+            logging.debug('Action failed. "{}"({}): {}; {}'
+                          .format(action_name, rec, ex, du.trace_str()))
+            logging.debug('Error(#{}) running action "{}"'
+                          .format(error_count, action_name))
+            ru.log_queue_record(red, rid, msg='DBG2.12a ')
+            msg = msghi if (error_count > maxerrors) else msglo
+            logging.error(msg.format(action_name, error_count, maxerrors, rec))
+            ru.log_queue_record(red, rid, msg='DBG2.14a ')
 
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
             try:
                 # switch to normal pipeline mode where commands get buffered
                 pl.multi()
-                try:
-                    logging.debug('RUN action: "{}"; {}"'
-                                  .format(action_name, rec))
-                    result = action(rec, qname, qcfg=qcfg, dirs=dirs)
-                    logging.debug('Action passed: "{}"({}) => {}'
-                                  .format(action_name, rec, result))
-                except Exception as ex:
-                    # action failed
-                    success = False
-                    logging.debug('Action failed. "{}"({}): {}; {}'
-                                  .format(action_name, rec, ex, du.trace_str()))
-                    ru.incr_error_count(pl, rid)
-                    error_count += 1
-                    logging.debug('Error(#{}) running action "{}"'
-                                  .format(error_count, action_name))
+                ru.log_queue_record(red, rid, msg='DBG1 ')
+
+                if success == False:
+                    ru.log_queue_record(red, rid, msg='DBG2.0 ')
+                    ru.log_queue_record(red, rid, msg='DBG2.1 ')
+                    ru.log_queue_record(red, rid, msg='DBG2.11 ')
                     if error_count > maxerrors:
-                        msg = ('Failed to run action "{}" {} times. '
-                               +' Max allowed is {} so moving it to the'
-                               +' INACTIVE queue.'
-                               +' Record={}. Exception={}')
-                        logging.error(msg.format(action_name,
-                                                 error_count, maxerrors,
-                                                 rec, ex))
+                        ru.log_queue_record(red, rid, msg='DBG2.14 ')
                         # action kept failing: move to Inactive queue
+                        ru.log_queue_record(red, rid, msg='DBG2.2 ')
                         ru.push_to_inactive(pl, rid)
+                        ru.log_queue_record(red, rid, msg='DBG3 ')
                     else:
-                        msg = ('Failed to run action "{}" {} times. '
-                               +' Max allowed is {} so will try again later.'
-                               +' Record={}. Exception={}')
-                        logging.error(msg.format(action_name,
-                                                 cnt, maxerrors, rec, ex))
                         # failed: go to the end of the line
                         ru.push_to_active(pl, rid)
                 pl.execute() # execute the pipeline
@@ -97,12 +108,14 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                               .format(err,du.trace_str()))
                 pl.execute() # execute the pipeline
         # END with pipeline
-        ru.log_queue_summary(red)
         if success:
             ru.remove_record(red, rid)  # We are done with rid, remove it
             msg = ('Action "{}" ran successfully against ({}): {} => {}')
             logging.info(msg.format(action_name, rid, rec, result))
-
+        ru.log_queue_summary(red)
+        ru.log_queue_record(red, rid, msg='success={} '.format(success))
+    # END while true
+    
 ##############################################################################
 
 def main():

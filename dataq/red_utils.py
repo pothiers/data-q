@@ -76,6 +76,7 @@ def get_record(red, rid):
     return decode_dict(red.hgetall(rid))
 
 def remove_record(red, rid):
+    logging.debug('DBG: remove record: {}={}'.format(rid, get_record(red, rid)))
     red.srem(rids, rid)
     
 def incr_error_count(red, rid):
@@ -108,16 +109,16 @@ def push_to_active(red, rid):
     logging.debug('push_to_active({})'.format(rid))
     red.lpush(aq, rid)
     red.sadd(aqs, rid)
-    red.sadd(rids, rid)
+    #!red.sadd(rids, rid)
+    #!red.hmset(rid, rec)
 
 def push_to_inactive(red, rid):
     logging.debug('push_to_inactive({})'.format(rid))
     red.lpush(iq, rid)
     red.sadd(iqs, rid)
-    red.sadd(rids, rid)
+    #!red.sadd(rids, rid)
 
 def queue_summary(red):
-    force_save(red)
     val = red.get(actionP) 
     actionPval = 'on' if val == None else val.decode()
     val = red.get(readP)
@@ -133,10 +134,12 @@ def queue_summary(red):
         ))
 
 def log_queue_summary(red):
-    force_save(red)
     dd = queue_summary(red)
     del dd['actionP'], dd['actionPkey'], dd['readP'], dd['readPkey']
     logging.debug('Q Summary: {}'.format(dd))
+
+def log_queue_record(red, rid, msg=''):
+    logging.debug('Q record: {}{}={}'.format(msg, rid, get_record(red, rid)))
 
 
 def clear_trans(pl, red=None):
@@ -170,6 +173,8 @@ def push_records(host, port, records, max_qsize):
         return False
     
     for rec in records:
+        if len(rec) < 2:
+            raise Exception('Attempted to push invalid record={}'.format(rec))
         checksum = rec['checksum']
         if r.sismember(aqs, checksum) == 1:
             logging.warning(': Record for {} is already in queue.'
