@@ -43,7 +43,6 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
         logging.debug('Read Queue: loop')
-        ru.force_save(red) #!!! remove (diag)
 
 #!        if not ru.action_p(red):
 #!            time.sleep(delay)
@@ -70,33 +69,33 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             success = False
             error_count += 1
             ru.incr_error_count(red, rid)
+            ru.force_save(red) #!!! remove (diag)
+            ru.log_queue_record(red, rid, msg='DBG2.12b ')
+            # DBG: the dictionary associated with RID is present here.
+            
+            msg = msghi if (error_count > maxerrors) else msglo
+            logging.error(msg.format(action_name, error_count, maxerrors, rec))
+
+            # DBG: the dictionary associated with RID diappeared here.
+            ru.set_record(red, rid, rec) #should not be necessary!!!
+
+
+            ru.log_queue_record(red, rid, msg='DBG2.14b ')
 
             logging.debug('Action failed. "{}"({}): {}; {}'
                           .format(action_name, rec, ex, du.trace_str()))
             logging.debug('Error(#{}) running action "{}"'
                           .format(error_count, action_name))
-            ru.log_queue_record(red, rid, msg='DBG2.12a ')
-            msg = msghi if (error_count > maxerrors) else msglo
-            logging.error(msg.format(action_name, error_count, maxerrors, rec))
-            ru.log_queue_record(red, rid, msg='DBG2.14a ')
 
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
             try:
                 # switch to normal pipeline mode where commands get buffered
                 pl.multi()
-                ru.log_queue_record(red, rid, msg='DBG1 ')
-
                 if success == False:
-                    ru.log_queue_record(red, rid, msg='DBG2.0 ')
-                    ru.log_queue_record(red, rid, msg='DBG2.1 ')
-                    ru.log_queue_record(red, rid, msg='DBG2.11 ')
                     if error_count > maxerrors:
-                        ru.log_queue_record(red, rid, msg='DBG2.14 ')
                         # action kept failing: move to Inactive queue
-                        ru.log_queue_record(red, rid, msg='DBG2.2 ')
                         ru.push_to_inactive(pl, rid)
-                        ru.log_queue_record(red, rid, msg='DBG3 ')
                     else:
                         # failed: go to the end of the line
                         ru.push_to_active(pl, rid)

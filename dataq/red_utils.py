@@ -75,6 +75,11 @@ def next_record(red):
 def get_record(red, rid):
     return decode_dict(red.hgetall(rid))
 
+def set_record(red, rid, record):
+        red.hmset(rid, record)
+    red.hset(ecnt, rid, 0) # error count against file
+    red.sadd(rids, rid)
+
 def remove_record(red, rid):
     logging.debug('DBG: remove record: {}={}'.format(rid, get_record(red, rid)))
     red.srem(rids, rid)
@@ -187,11 +192,13 @@ def push_records(host, port, records, max_qsize):
                     pl.watch(rids, aq, aqs, checksum)
                     pl.multi()
                     # add to DB
-                    pl.lpush(aq, checksum)
-                    pl.sadd(aqs, checksum)
-                    pl.sadd(rids, checksum)
-                    pl.hmset(checksum, rec)
-                    pl.hset(ecnt, checksum, 0) # error count against file
+                    #!pl.lpush(aq, checksum)
+                    #!pl.sadd(aqs, checksum)
+                    push_to_active(pl, checksum)
+                    #!pl.sadd(rids, checksum)
+                    #!pl.hmset(checksum, rec)
+                    #!pl.hset(ecnt, checksum, 0) # error count against file
+                    set_record(pl, checksum, rec)
                     pl.execute()
                     break
                 except redis.WatchError as ex:
@@ -236,11 +243,13 @@ def push_direct(redis_host, redis_port, fname, checksum, cfg):
                 pl.watch(rids, aq, aqs, checksum)
                 pl.multi()
                 # add to DB
-                pl.sadd(aqs, checksum)
-                pl.lpush(aq, checksum)
-                pl.sadd(rids, checksum)
-                pl.hmset(checksum, rec)
-                pl.hset(ecnt, checksum, 0) # error count against file
+                #!pl.sadd(aqs, checksum)
+                #!pl.lpush(aq, checksum)
+                push_to_active(pl, checksum)
+                #!pl.sadd(rids, checksum)
+                #!pl.hmset(checksum, rec)
+                #!pl.hset(ecnt, checksum, 0) # error count against file
+                set_record(pl, checksum, rec)
                 pl.execute()
                 break
             except redis.WatchError as ex:
