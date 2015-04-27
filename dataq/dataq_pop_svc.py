@@ -69,8 +69,8 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             success = False
             error_count += 1
             ru.incr_error_count(red, rid)
-            ru.force_save(red) #!!! remove (diag)
-            ru.log_queue_record(red, rid, msg='DBG2.12b ')
+            #! ru.force_save(red) #!!! remove (diag)
+            #! ru.log_queue_record(red, rid, msg='DBG2.12b ')
             # DBG: the dictionary associated with RID is present here.
             
             msg = msghi if (error_count > maxerrors) else msglo
@@ -78,9 +78,6 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 
             # DBG: the dictionary associated with RID diappeared here.
             ru.set_record(red, rid, rec) #should not be necessary!!!
-
-
-            ru.log_queue_record(red, rid, msg='DBG2.14b ')
 
             logging.debug('Action failed. "{}"({}): {}; {}'
                           .format(action_name, rec, ex, du.trace_str()))

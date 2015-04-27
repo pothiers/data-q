@@ -80,7 +80,8 @@ def list_queue(red, which):
     else:
         q = iq
     id_list = red.lrange(q, 0, -1)
-    print(('%s QUEUE (%s):'  % (which, len(id_list))))
+    #!print(('%s QUEUE (%s):'  % (which, len(id_list))))
+    print('{} QUEUE ({}):'.format(which, red.llen(q)))
     for ridB in id_list:
         rid = ridB.decode()
         rec = ru.get_record(red,rid)
@@ -89,7 +90,7 @@ def list_queue(red, which):
 
 def dump_queue(red, outfile):
     'Dump copy of queue into this file'
-    ids = red.lrange(aq, 0, -1)
+    ids = red.lrange(aq, 0, -1) 
     activeIds = set(ids)
     for ridB in ids:
         rid = ridB.decode()

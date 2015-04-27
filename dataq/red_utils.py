@@ -76,7 +76,7 @@ def get_record(red, rid):
     return decode_dict(red.hgetall(rid))
 
 def set_record(red, rid, record):
-        red.hmset(rid, record)
+    red.hmset(rid, record)
     red.hset(ecnt, rid, 0) # error count against file
     red.sadd(rids, rid)
 

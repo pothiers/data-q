@@ -87,7 +87,7 @@ setup(
     entry_points={
         'console_scripts': [
             'dqcli=dataq.dataq_cli:main',
-            'dqsvcpush=dataq.dataq_push_svc:main',
+            #!'dqsvcpush=dataq.dataq_push_svc:main',
             'dqsvcpop=dataq.dataq_pop_svc:main',
             #!'file_type=dataq.file_type:main',
         ],
