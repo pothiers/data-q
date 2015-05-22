@@ -45,6 +45,9 @@ def clear_db(red):
 def info(red):
     pprint.pprint(red.info())
 
+def history(red):
+    pass
+
 def summary(red):
     'Summarize queue contents.'
     ru.force_save(red)
@@ -312,7 +315,10 @@ def main():
                         choices=possible_qnames,
                         help='Name of queue to pop from. Must be in cfg file.')
 
-    parser.add_argument('--version', action='version', version='%(prog)s 1.0.2')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.1')
+    parser.add_argument('--history',
+                        help='List history (success/failure) of actions.',
+                        action='store_true')
     parser.add_argument('--summary', '-s',
                         help='Show summary of queue contents.',
                         action='store_true')
@@ -432,6 +438,9 @@ def main():
 
     if args.redo:
         activate_all(red)
+
+    if args.history:
+        history(red)
 
     if args.info:
         info(red)

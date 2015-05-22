@@ -17,3 +17,6 @@ readP='readFlag'     # on|off
 dummy='dummy_aq'     # List used to clear block of AQ when needed on change
                      # of actionFlag
 
+histb='history_begin'        # Earliest time for actions recorded in history
+histp='history_pass_actions' # List of actions that passed since history_begin
+histf='history_fail_actions' # List of actions that failed since history_begin
