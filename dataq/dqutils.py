@@ -85,7 +85,7 @@ dest_root. Dest_basename defaults to base of src_abs_fname."""
                              new_base=dest_basename)
     logging.debug('move [base={}] {} to {}'
                   .format(dest_basename, src_abs_fname, dest_fname))
-    os.makedirs(os.path.dirname(dest_fname), exist_ok=True)
+    os.makedirs(os.path.dirname(dest_fname), mode=0o777, exist_ok=True)
     if src_abs_fname == dest_fname:
         raise Exception('Tried to move filename to itself: {}'
                         .format(dest_fname))
