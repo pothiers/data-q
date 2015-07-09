@@ -116,6 +116,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
 def main():
     'Parse args, then start reading queue forever.'
     possible_qnames = ['transfer', 'submit']
+    logconf='/etc/tada/pop.yaml'
     parser = argparse.ArgumentParser(
         description='Data Queue service',
         epilog='EXAMPLE: %(prog)s --loglevel DEBUG &'
@@ -125,8 +126,9 @@ def main():
     #!                    help='Configuration file (json format)',
     #!                    type=argparse.FileType('r'))
     parser.add_argument('--logconf',
-                        help='Logging configuration file (YAML format)',
-                        default='/etc/tada/pop.yaml',
+                        help='Logging configuration file (YAML format).'
+                        '[Default={}]'.format(logconf),
+                        default=logconf,
                         type=argparse.FileType('r'))
     parser.add_argument('--queue', '-q',
                         choices=possible_qnames,
