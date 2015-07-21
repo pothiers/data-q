@@ -50,7 +50,7 @@ def history(red):
 
 def summary(red):
     'Summarize queue contents.'
-    ru.force_save(red)
+    #! ru.force_save(red)
 
     if red.get(actionP) == None:
         red.set(actionP,'on')
@@ -68,7 +68,7 @@ Socket READ enabled:   %(readP)s [%(readPkey)s]
 
 def list_queue(red, which):
     'List the content of the queue.'
-    ru.force_save(red)
+    #!ru.force_save(red)
     if which == 'records':
         print(('Records (%d):'  % (red.scard(rids),)))
         for ridB in sorted(red.smembers(rids)):

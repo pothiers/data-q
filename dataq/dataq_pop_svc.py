@@ -32,7 +32,6 @@ msglo = ('Failed to run action "{}" {} times. '
 
 
 
-# GROSS: highly nested code!!!
 def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
     red = ru.redis_protocol()
@@ -40,27 +39,24 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     action = action_lut[action_name]
     maxerrors = qcfg[qname]['maximum_errors_per_record']
 
-    logging.debug('Read Queue "{}"'.format(qname))
+    #! logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
-        logging.debug('Read Queue: loop')
-
-#!        if not ru.action_p(red):
-#!            time.sleep(delay)
-#!            continue
+        #!logging.debug('Read Queue: loop')
 
         rid = ru.next_record(red)
         if rid == None:
             continue
-        logging.debug('Read Queue: got "{}"'.format(rid))
 
         rec = ru.get_record(red, rid)
         if len(rec) == 0:
             raise Exception('No record found for rid={}'.format(rid))
+        #!logging.debug('Read Queue: id={}; {}'.format(rid,rec))
 
         error_count = ru.get_error_count(red, rid)
         success = True
         try:
-            logging.debug('RUN action: "{}"; {}"'.format(action_name, rec))
+            logging.debug('RUN action: {}({}, {})'
+                          .format(action_name, rec, qname))
             result = action(rec, qname, qcfg=qcfg, dirs=dirs)
             logging.debug('Action passed: "{}"({}) => {}'
                           .format(action_name, rec, result))
@@ -107,8 +103,8 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             ru.remove_record(red, rid)  # We are done with rid, remove it
             msg = ('Action "{}" ran successfully against ({}): {} => {}')
             logging.info(msg.format(action_name, rid, rec, result))
-        ru.log_queue_summary(red)
-        ru.log_queue_record(red, rid, msg='success={} '.format(success))
+        #!ru.log_queue_summary(red)
+        #!ru.log_queue_record(red, rid, msg='success={} '.format(success))
     # END while true
     
 ##############################################################################

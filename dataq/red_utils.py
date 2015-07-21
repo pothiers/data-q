@@ -111,14 +111,14 @@ def force_save(red):
     return curr
 
 def push_to_active(red, rid):
-    logging.debug('push_to_active({})'.format(rid))
+    #!logging.debug('push_to_active({})'.format(rid))
     red.lpush(aq, rid)
     red.sadd(aqs, rid)
     #!red.sadd(rids, rid)
     #!red.hmset(rid, rec)
 
 def push_to_inactive(red, rid):
-    logging.debug('push_to_inactive({})'.format(rid))
+    #!logging.debug('push_to_inactive({})'.format(rid))
     red.lpush(iq, rid)
     red.sadd(iqs, rid)
     #!red.sadd(rids, rid)
