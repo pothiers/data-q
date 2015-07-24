@@ -378,24 +378,13 @@ def main():
         parser.error('Invalid log level: %s' % args.loglevel) 
         logging.config.dictConfig(LOG_SETTINGS)
 
-
-
-    #!logging.basicConfig(level = numeric_level,
-    #!                    format='%(levelname)s %(message)s',
-    #!                    datefmt='%m-%d %H:%M',
-    #!                    )
-    #!logfilename='/var/log/dataq.log'
-    #!handler = logging.handlers.RotatingFileHandler(logfilename,
-    #!                                               maxBytes=1e4,
-    #!                                               backupCount=9,
-    #!                                               )
-    #!logging.addHandler(handler)
-    logging.debug('Debug output is enabled!!')
+    #!logging.debug('Debug output is enabled!!')
 
     ############################################################################
 
     qcfg, dirs = config.get_config(possible_qnames)
     qname = args.queue
+
     max_qsize = qcfg[qname]['maxium_queue_size']
     host = qcfg[qname]['dq_host']
     port = qcfg[qname]['redis_port']

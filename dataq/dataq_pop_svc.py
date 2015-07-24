@@ -143,16 +143,18 @@ def main():
     logging.basicConfig(level=log_level,
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
-    logging.debug('\nDebug output is enabled!!')
+    #! logging.debug('\nDebug output is enabled!!')
 
     logDict = yaml.load(args.logconf)
-    print('logDict={}'.format(logDict), flush=True)
     logging.config.dictConfig(logDict)
     logging.getLogger().setLevel(log_level)
 
     ###########################################################################
 
     qcfg, dirs = config.get_config(possible_qnames)
+    logging.info('logDict={}'.format(logDict))
+    logging.info('Tada-Config content({}): {}'.format(args.queue, qcfg))
+
     du.save_pid(sys.argv[0], piddir=dirs['run_dir'])
     process_queue_forever(args.queue, qcfg, dirs)
 
