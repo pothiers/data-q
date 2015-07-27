@@ -75,9 +75,9 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             # DBG: the dictionary associated with RID diappeared here.
             ru.set_record(red, rid, rec) #should not be necessary!!!
 
-            logging.error('Error #{} running action "{}"({}): {}; {}'
-                          .format(error_count, action_name,
-                                  rec, ex, du.trace_str()))
+            logging.error('Error {} running {} action: {}; {}'
+                          .format(error_count, action_name.upper(),
+                                  ex, du.trace_str()))
 
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
