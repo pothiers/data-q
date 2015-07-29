@@ -315,7 +315,7 @@ def main():
                         choices=possible_qnames,
                         help='Name of queue to pop from. Must be in cfg file.')
 
-    parser.add_argument('--version', action='version', version='%(prog)s 1.1')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.2')
     parser.add_argument('--history',
                         help='List history (success/failure) of actions.',
                         action='store_true')
