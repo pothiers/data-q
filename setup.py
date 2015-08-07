@@ -9,13 +9,16 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+with open(path.join(here,'dataq','VERSION')) as version_file:
+    version = version_file.read().strip()
+
 setup(
     name='dataq',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version='0.1.0',
+    version=version,
 
 
     description='Manage data-queue with associated Action on pop',
@@ -72,9 +75,7 @@ setup(
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
-    package_data={
-        'sample': ['package_data.dat'],
-    },
+    package_data={'dataq': ['VERSION',]},
 
     # Although 'package_data' is the preferred approach, in some case you may
     # need to place data files outside of your packages.

@@ -66,6 +66,19 @@ ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
 Socket READ enabled:   %(readP)s [%(readPkey)s]
 ''' % prms)
 
+def count_queue(red, which):
+    'Count the number of items in the queue.'
+    prms = ru.queue_summary(red)
+    if which == 'records':
+        cnt = prms['numRecords']
+    elif which == 'active':
+        cnt = prms['lenActive']
+    elif which == 'inactive':
+        cnt = prms['lenInactive']
+    else:
+        cnt = 0
+    print(cnt)
+    
 def list_queue(red, which):
     'List the content of the queue.'
     #!ru.force_save(red)
@@ -327,6 +340,9 @@ def main():
     parser.add_argument('--list', '-l',
                         help='List queue',
                         choices=['active', 'inactive', 'records'])
+    parser.add_argument('--count', '-c',
+                        help='Count items in queue',
+                        choices=['active', 'inactive', 'records'])
     parser.add_argument('--action', '-a',
                         help='Turn on/off running actions on queue records.',
                         default=None,
@@ -407,6 +423,9 @@ def main():
 
     if args.list:
         list_queue(red, args.list)
+
+    if args.count:
+        count_queue(red, args.count)
 
     if args.dump:
         dump_queue(red, args.dump)
