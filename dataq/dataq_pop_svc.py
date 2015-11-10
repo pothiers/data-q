@@ -102,7 +102,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         if success:
             ru.remove_record(red, rid)  # We are done with rid, remove it
             msg = ('Action "{}" ran successfully against ({}): {} => {}')
-            logging.info(msg.format(action_name, rid, rec, result))
+            logging.debug(msg.format(action_name, rid, rec, result))
         #!ru.log_queue_summary(red)
         #!ru.log_queue_record(red, rid, msg='success={} '.format(success))
     # END while true
