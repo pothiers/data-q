@@ -16,6 +16,7 @@ import time
 import sys
 import traceback
 import yaml
+from datetime import datetime
 
 from tada import config
 from . import dqutils as du
@@ -153,6 +154,7 @@ def main():
 
     qcfg, dirs = config.get_config(possible_qnames)
     logging.info('logDict={}'.format(logDict))
+    logging.info('DATAQ started: {}'.format(datetime.now().isoformat()))
     logging.info('Tada-Config content({}): {}'.format(args.queue, qcfg))
 
     du.save_pid(sys.argv[0], piddir=dirs['run_dir'])
