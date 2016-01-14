@@ -183,7 +183,7 @@ def push_records(host, port, records, max_qsize):
         checksum = rec['checksum']
         if r.sismember(aqs, checksum) == 1:
             logging.warning(': Record for {} is already in queue.'
-                            +' Ignoring duplicate.'.format(checksum))
+                            ' Ignoring duplicate.'.format(checksum))
             continue
         # buffer all commands done by pipeline, make command list atomic
         with r.pipeline() as pl:
