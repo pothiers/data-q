@@ -48,7 +48,7 @@ def info(red):
 def history(red):
     pass
 
-def summary(red):
+def summary(red, qname):
     'Summarize queue contents.'
     #! ru.force_save(red)
 
@@ -58,7 +58,9 @@ def summary(red):
         red.set(readP,'on')
 
     prms = ru.queue_summary(red)
+    prms['qname'] = qname
     print('''
+Queue Name:            %(qname)s
 Active queue length:   %(lenActive)d
 Inactive queue length: %(lenInactive)d
 Num records tracked:   %(numRecords)d
@@ -404,12 +406,12 @@ def main():
     max_qsize = qcfg[qname]['maxium_queue_size']
     host = qcfg[qname]['dq_host']
     port = qcfg[qname]['redis_port']
+    red = ru.redis_protocol()
 
     if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-
-    red = ru.redis_protocol()
+        #parser.print_help()
+        summary(red, qname)
+        sys.exit(0)
 
     if args.clear:
         clear_db(red)
@@ -453,10 +455,10 @@ def main():
     if args.info:
         info(red)
         if args.summary:
-            summary(red)
+            summary(red, qname)
 
     if args.summary:
-        summary(red)
+        summary(red, qname)
 
     red.save()
 
