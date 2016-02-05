@@ -81,7 +81,7 @@ def set_record(red, rid, record):
     red.sadd(rids, rid)
 
 def remove_record(red, rid):
-    logging.debug('DBG: remove record: {}={}'.format(rid, get_record(red, rid)))
+    #!logging.debug('DBG: remove record: {}={}'.format(rid, get_record(red, rid)))
     red.srem(rids, rid)
     
 def incr_error_count(red, rid):
@@ -107,7 +107,7 @@ def force_save(red):
     prev = red.lastsave()
     red.save()
     curr= red.lastsave()
-    logging.debug('REDIS Saved: {}. (Previously: {}'.format(curr, prev))
+    #!logging.debug('REDIS Saved: {}. (Previously: {}'.format(curr, prev))
     return curr
 
 def push_to_active(red, rid):
@@ -141,7 +141,7 @@ def queue_summary(red):
 def log_queue_summary(red):
     dd = queue_summary(red)
     del dd['actionP'], dd['actionPkey'], dd['readP'], dd['readPkey']
-    logging.debug('Q Summary: {}'.format(dd))
+    #!logging.debug('Q Summary: {}'.format(dd))
 
 def log_queue_record(red, rid, msg=''):
     logging.debug('Q record: {}{}={}'.format(msg, rid, get_record(red, rid)))
@@ -150,7 +150,7 @@ def log_queue_record(red, rid, msg=''):
 def clear_trans(pl, red=None):
     'REDIS transaction for clearing TADA elements from REDIS'
     ids = red.smembers(rids)
-    logging.debug('Clearing REDIS DB; ids({})={}'.format(len(ids), ids))
+    #!logging.debug('Clearing REDIS DB; ids({})={}'.format(len(ids), ids))
     if len(ids) > 0:
         pl.delete(*ids)
     pl.delete(aq, aqs, iq, iqs, rids, ecnt, actionP, readP, dummy)
@@ -183,7 +183,7 @@ def push_records(host, port, records, max_qsize):
         checksum = rec['checksum']
         if r.sismember(aqs, checksum) == 1:
             logging.warning(': Record for {} is already in queue.'
-                            +' Ignoring duplicate.'.format(checksum))
+                            ' Ignoring duplicate.'.format(checksum))
             continue
         # buffer all commands done by pipeline, make command list atomic
         with r.pipeline() as pl:
