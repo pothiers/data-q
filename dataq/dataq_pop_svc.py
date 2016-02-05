@@ -59,6 +59,9 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             logging.debug('RUN action: {}({}, {})'
                           .format(action_name, rec, qname))
             result = action(rec, qname, qcfg=qcfg, dirs=dirs)
+            success = result
+            if success == False:
+                error_count += 1
             logging.debug('Action passed: "{}"({}) => {}'
                           .format(action_name, rec, result))
         except Exception as ex:

@@ -12,6 +12,7 @@ import logging.handlers
 import pprint
 import json
 import fileinput
+import subprocess
 from functools import partial
 
 from tada import config
@@ -311,6 +312,10 @@ def activate_range(red, first, last):
 
 ##############################################################################
 
+def get_qname():
+    cmd = 'source /etc/tada/dqd.conf; echo $qname'
+    valstr = subprocess.check_output(['bash', '-c', cmd ]).decode()
+    return valstr[:-1]
 
 def main():
     'Parse command line (a mini-interpreter) and do the work.'
@@ -325,8 +330,9 @@ def main():
     #!parser.add_argument('--queue', '-q',
     #!                    choices=possible_qnames,
     #!                    help='Name of queue to pop from. Must be in cfg file.')
+    default_q = get_qname()
     parser.add_argument('--queue', '-q',
-                        default='submit',
+                        default=default_q,
                         choices=possible_qnames,
                         help='Name of queue to pop from. Must be in cfg file.')
 
