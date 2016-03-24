@@ -56,14 +56,15 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         error_count = ru.get_error_count(red, rid)
         success = True
         try:
-            logging.debug('RUN action: {}({}, {})'
-                          .format(action_name, rec, qname))
+            logging.debug('RUN action: {}'.format(action_name))
             result = action(rec, qname, qcfg=qcfg, dirs=dirs)
             success = result
             if success == False:
                 error_count += 1
             logging.debug('Action passed: "{}"({}) => {}'
-                          .format(action_name, rec, result))
+                          .format(action_name,
+                                  rec.get('filename','NA'),
+                                  result))
         except Exception as ex:
             # action failed
             success = False
@@ -82,6 +83,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             logging.error('Error {} running {} action: {}; {}'
                           .format(error_count, action_name.upper(),
                                   ex, du.trace_str()))
+            #sys.exit(ex)
 
         # buffer all commands done by pipeline, make command list atomic
         with red.pipeline() as pl:
@@ -106,7 +108,10 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         if success:
             ru.remove_record(red, rid)  # We are done with rid, remove it
             msg = ('Action "{}" ran successfully against ({}): {} => {}')
-            logging.debug(msg.format(action_name, rid, rec, result))
+            logging.debug(msg.format(action_name,
+                                     rid,
+                                     rec.get('filename','NA'),
+                                     result))
         #!ru.log_queue_summary(red)
         #!ru.log_queue_record(red, rid, msg='success={} '.format(success))
     # END while true

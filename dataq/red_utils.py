@@ -16,7 +16,7 @@ def decode_dict(byte_dict):
 
 def log_rid(r, rid, msg):
     'Diagnostic only'
-    logging.debug('dbg-{}: {}={}'.format(msg, rid,r.hgetall(rid)))
+    logging.debug('DBG-{}: {}={}'.format(msg, rid,r.hgetall(rid)))
 
 def redis_vars(r, rid):
     'Diagnostic only'

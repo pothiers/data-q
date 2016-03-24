@@ -12,6 +12,7 @@ import logging.handlers
 import pprint
 import json
 import fileinput
+import yaml
 import subprocess
 from functools import partial
 
@@ -130,37 +131,21 @@ def push_queue(redis_host, redis_port, infiles, max_qsize):
             recs.append(dict(filename=fname, checksum=checksum, error_count=count))
     ru.push_records(redis_host, redis_port, recs, max_qsize)
     
-def OLD_push_queue(red, infiles):
-    'OBSOLETE: Push records (lines) from list of files. (or stdin if infiles is empty).'
-    logging.error('dbg-0: EXECUTING push_queue()')
-    warnings = 0
-    loaded = 0
-
-    with fileinput.input(files=infiles) as infile:
-        for line in infile:
-            (checksum, fname, *others) = line.strip().split()
-            count = 0 if len(others) == 0 else int(others[0])
-            rec = dict(filename=fname, checksum=checksum, error_count=count)
-
-            pl = red.pipeline()
-            pl.watch(rids, aq, aqs, checksum)
-            pl.multi()
-            logging.debug(': Read line with id=%s', checksum)
-            if red.sismember(aqs, checksum) == 1:
-                logging.warning(': Record for %s is already in queue.'
-                                  +' Ignoring duplicate.', checksum)
-                warnings += 1
-            else:
-                logging.debug('push_queue::hmset {} = {}'.format(checksum, rec))
-                # add to DB
-                pl.sadd(aqs, checksum)
-                pl.lpush(aq, checksum)
-                pl.sadd(rids, checksum)
-                pl.hmset(checksum, rec)
-                pl.save()
-                loaded += 1
-                pl.execute()
-        print('PUSH: Issued %d warnings. %d loaded'%(warnings, loaded))
+def push_files(redis_host, redis_port, filename_list, max_qsize):
+    'Push filenames (each with checksum ) onto queue'
+    logging.debug('DBG-0: EXECUTING push_file();{}'.format(filename_list))
+    recs = list()
+    for fname in filename_list:
+        #!try:
+        logging.debug('DBG-1: md5 for {}'.format(fname))
+        res = subprocess.check_output('md5sum {}'.format(fname), shell=True)
+        checksum, dum = res.decode().strip().split()
+        logging.debug('DBG-2: md5={}'.format(checksum))            
+        recs.append(dict(filename=fname, checksum=checksum, error_count=0))  
+        #!except Exception as err:
+        #!    logging.error('Could not push file "{}"; {}'.format(fname, err))
+        #!    continue
+    ru.push_records(redis_host, redis_port, recs, max_qsize)
 
 def push_string(red, line):
     'Push record (string) containing: "checksum filename"'
@@ -320,6 +305,7 @@ def get_qname():
 def main():
     'Parse command line (a mini-interpreter) and do the work.'
     possible_qnames = ['transfer', 'submit']
+    logconf='/etc/tada/dataq_cli_logconf.yaml'
     parser = argparse.ArgumentParser(
         description='Modify or display the data queue',
         epilog='EXAMPLE: %(prog)s --summary'
@@ -373,6 +359,10 @@ def main():
                         help='A single string to load into queue.'
                         +' Space delimited string must contain at least'
                         +' "checksum filename".')
+    parser.add_argument('--pushfile',
+                        help='Push a single file (and its md5sum) onto queue.'
+                        +' Multiple allowed.',
+                        action='append')
 
     parser.add_argument('--advance',
                         help='Move records to end of queue.',
@@ -389,6 +379,11 @@ def main():
                         action='store_true'
                         )
 
+    parser.add_argument('--logconf',
+                        help='Logging configuration file (YAML format).'
+                        '[Default={}]'.format(logconf),
+                        default=logconf,
+                        type=argparse.FileType('r'))
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
                         choices=['CRTICAL','ERROR','WARNING','INFO','DEBUG'],
@@ -397,11 +392,21 @@ def main():
     args = parser.parse_args()
 
 
-    numeric_level = getattr(logging, args.loglevel.upper(), None)
-    if not isinstance(numeric_level, int):
+    #!numeric_level = getattr(logging, args.loglevel.upper(), None)
+    #!if not isinstance(numeric_level, int):
+    #!    parser.error('Invalid log level: %s' % args.loglevel) 
+    #!    logging.config.dictConfig(LOG_SETTINGS)
+    log_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(log_level, int):
         parser.error('Invalid log level: %s' % args.loglevel) 
-        logging.config.dictConfig(LOG_SETTINGS)
+    logging.basicConfig(level=log_level,
+                        format='%(levelname)s %(message)s',
+                        datefmt='%m-%d %H:%M')
 
+    logDict = yaml.load(args.logconf)
+    logging.config.dictConfig(logDict)
+    logging.getLogger().setLevel(log_level)
+    
     #!logging.debug('Debug output is enabled!!')
 
     ############################################################################
@@ -440,9 +445,11 @@ def main():
 
     if args.push:
         push_queue(host, port, args.push, max_qsize)
+    if args.pushfile:
+        push_files(host, port, args.pushfile, max_qsize)
     if args.pushstr:
         push_string(red, args.pushstr)
-
+        
     if args.advance:
         advance_range(red, args.advance[0], args.advance[1])
 
