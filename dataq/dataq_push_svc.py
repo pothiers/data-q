@@ -129,8 +129,8 @@ def main():
 
     dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])
 
-    dq_host = qcfg[args.queue]['dq_host']
-    dq_port = qcfg[args.queue]['dq_port']
+    dq_host = qcfg['dq_host']
+    dq_port = qcfg['dq_port']
     serveraddr = (dq_host, dq_port)
     logging.debug('Queue "{}" read data from {}:{} and push to REDIS'
                   .format(args.queue, dq_host, dq_port))

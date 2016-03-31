@@ -210,7 +210,8 @@ def push_records(host, port, records, max_qsize):
         # END: with pipeline
         log_rid(r, checksum, 'end push_records()')
     
-def push_direct(redis_host, redis_port, fname, checksum, cfg):
+def push_direct(redis_host, redis_port, fname, checksum,
+                max_queue_size=5000):
     'Directly push a record to (possibly remote) REDIS'
 
     r = redis.StrictRedis(host=redis_host, port=redis_port,
@@ -225,7 +226,7 @@ def push_direct(redis_host, redis_port, fname, checksum, cfg):
                         .format(checksum))
         return False
 
-    if r.llen(aq) > cfg['maxium_queue_size']:
+    if r.llen(aq) > max_queue_size:
         logging.error('Queue is full! '
                       + 'Turning off read from socket. '
                       + 'Disabling push to queue.  '

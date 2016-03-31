@@ -11,7 +11,6 @@ put record back on queue.
 import argparse
 import logging
 import logging.config
-import json
 import time
 import sys
 import traceback
@@ -38,7 +37,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     red = ru.redis_protocol()
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
-    maxerrors = qcfg[qname]['maximum_errors_per_record']
+    maxerrors = qcfg['maximum_errors_per_record']
 
     #! logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
@@ -165,7 +164,7 @@ def main():
     logging.info('DATAQ started: {}'.format(datetime.now().isoformat()))
     logging.info('Tada-Config content({}): {}'.format(args.queue, qcfg))
 
-    du.save_pid(sys.argv[0], piddir=dirs['run_dir'])
+    du.save_pid(sys.argv[0], piddir='/var/run/tada')
     process_queue_forever(args.queue, qcfg, dirs)
 
 if __name__ == '__main__':
