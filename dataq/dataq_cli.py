@@ -133,23 +133,21 @@ def push_queue(redis_host, redis_port, infiles, max_qsize):
     
 def push_files(redis_host, redis_port, filename_list, max_qsize):
     'Push filenames (each with checksum ) onto queue'
-    logging.debug('DBG-0: EXECUTING push_file();{}'.format(filename_list))
+    logging.debug('DBG-0: EXECUTING push_files();{}'.format(filename_list))
     recs = list()
     for fname in filename_list:
-        #!try:
-        logging.debug('DBG-1: md5 for {}'.format(fname))
-        res = subprocess.check_output('md5sum {}'.format(fname), shell=True)
-        checksum, dum = res.decode().strip().split()
-        logging.debug('DBG-2: md5={}'.format(checksum))            
-        recs.append(dict(filename=fname, checksum=checksum, error_count=0))  
-        #!except Exception as err:
-        #!    logging.error('Could not push file "{}"; {}'.format(fname, err))
-        #!    continue
+        try:
+            res = subprocess.check_output('md5sum {}'.format(fname), shell=True)
+            checksum, dum = res.decode().strip().split()
+            recs.append(dict(filename=fname, checksum=checksum, error_count=0))  
+        except Exception as err:
+            logging.error('Could not push file "{}"; {}'.format(fname, err))
+            continue
     ru.push_records(redis_host, redis_port, recs, max_qsize)
 
 def push_string(red, line):
     'Push record (string) containing: "checksum filename"'
-    logging.error('dbg-0: EXECUTING push_string()')
+    logging.debug('DBG-0: EXECUTING push_string()')
     warnings = 0
     loaded = 0
 
