@@ -65,6 +65,8 @@ def next_record(red):
     (keynameB, ridB) = red.brpop([dummy, aq]) # BLOCKING pop (over key list)
     if (keynameB.decode() == dummy):
         rid = None
+        logging.debug('DG next_record got value ({}) on DUMMY channel'.
+                      format(ridB))
     else:
         rid =  ridB.decode()
         red.srem(aqs, rid)
