@@ -62,6 +62,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             success = result
             if success == False:
                 error_count += 1
+                ru.incr_error_count(red, rid)
             logging.debug('Action passed: "{}"({}) => {}'
                           .format(action_name,
                                   rec.get('filename','NA'),

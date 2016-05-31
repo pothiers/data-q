@@ -1,3 +1,4 @@
+
 "Actions that can be run against entry when popped off queue."
 import random
 import logging
