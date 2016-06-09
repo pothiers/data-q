@@ -16,6 +16,8 @@ import sys
 import traceback
 import yaml
 from datetime import datetime
+import shutil
+
 
 from tada import config
 from . import dqutils as du
@@ -31,6 +33,12 @@ msglo = ('Failed to run action "{}" {} times. '
          +' Record={}.')
 
 
+def logheartbeat():
+    logname='/var/log/tada/dqpop-heartbeat.log'
+    with open(logname, 'a') as f:
+        # log: <time stamp> <free disk space in bytes>
+        print(str(datetime.now()), shutil.disk_usage('/var/tada/').free,
+              file=f)
 
 def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
@@ -38,6 +46,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
     maxerrors = qcfg['maximum_errors_per_record']
+    logheartbeat()
 
     #! logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever

@@ -121,15 +121,19 @@ def push_to_active(red, rid):
 
 def push_to_inactive(red, rid):
     #!logging.debug('push_to_inactive({})'.format(rid))
-    red.lpush(iq, rid)
-    red.sadd(iqs, rid)
-    #!red.sadd(rids, rid)
+    if red.sismember(iqs, rid) == 1:
+        logging.debug('Already on INACTIVE queue. Not adding again. {}'
+                      .format(rid))
+    else:
+        red.lpush(iq, rid)
+        red.sadd(iqs, rid)
+        #!red.sadd(rids, rid)
 
 def queue_summary(red):
     val = red.get(actionP) 
     actionPval = 'on' if val == None else val.decode()
     val = red.get(readP)
-    readPval = 'on' if val == None else val.decode()        
+    readPval = 'on' if val == None else val.decode()
     return(dict(
         lenActive=red.llen(aq),
         lenInactive=red.llen(iq),

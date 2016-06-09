@@ -241,7 +241,30 @@ def deactivate_range(red, first, last):
         pl.execute()
         print('Deactivated %d records' % (len(selected),))
 
+def remove_inactive_range(red, first, last):
+    '''Delete range of records including FIRST and LAST id from where
+    they are on the inactive queue'''
+    pl = red.pipeline()
+    pl.watch(aq, aqs, iq)
+    pl.multi()
 
+    ids = [b.decode() for b in red.lrange(iq, 0, -1)]
+    try:
+        selected = get_selected(ids, first, last)
+        logging.debug('Selected records = %s', selected)
+    except:
+        logging.error('Could not select [{}:{}] from {}.'
+                        .format(first, last, ids))
+        raise
+
+    for rid in selected:
+        pl.lrem(iq, 0, rid)
+        pl.srem(iqs, rid)
+
+        pl.save()
+        pl.execute()
+        print('Removed %d records from Inactive queue' % (len(selected),))
+    
 def activate_ids(red, selected):
     warnings = 0
     moved = 0
@@ -339,7 +362,7 @@ def main():
                         help='Turn on/off running actions on queue records.',
                         default=None,
                         choices=['on', 'off'])
-    parser.add_argument('--read', '-r',
+    parser.add_argument('--read',
                         help='Turn on/off reading socket and pushing to queue.',
                         default=None,
                         choices=['on', 'off'])
@@ -369,6 +392,10 @@ def main():
     parser.add_argument('--deactivate',
                         help='Move selected records to INACTIVE',
                         nargs=2)
+    parser.add_argument('--remove', '-r',
+                        help='Remove selected INACTIVE records',
+                        nargs=2)
+    
     parser.add_argument('--activate',
                         help='Move selected records to ACTIVE',
                         nargs=2)
@@ -454,6 +481,9 @@ def main():
     if args.deactivate:
         deactivate_range(red, args.deactivate[0], args.deactivate[1])
 
+    if args.remove:
+        remove_inactive_range(red, args.remove[0], args.remove[1])
+        
     if args.activate:
         activate_range(red, args.activate[0], args.activate[1])
 

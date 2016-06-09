@@ -1,11 +1,11 @@
 'Constants to use for keys in redis'
 
 aq='activeq'         # List of IDs. Pop and apply actions from this.
-aqs='activeq_set'    # SET version of "activeq" so we can tell if an id
+aqs='activeq_set'    # SET form of "activeq" so we can tell if an id
                      # is already on the active list
 
 iq='inactiveq'       # List of IDs. Stash records that should not be popped here
-iqs='inactiveq_set'  # SET version of "inactiveq" so we can tell if an id
+iqs='inactiveq_set'  # SET form of "inactiveq" so we can tell if an id
                      # is already on the inactive list
 
 rids='record_ids'    # Set of IDs used as keys to record hash.
