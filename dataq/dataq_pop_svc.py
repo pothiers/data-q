@@ -53,6 +53,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         logging.debug('Read Queue: loop (block for NEXT RECORD each time)')
 
         rid = ru.next_record(red) # BLOCKING
+        logheartbeat()
         if rid == None:
             logging.debug('Read Queue: rid == None. '
                           'Should only happen on toggle of ACTION flag.')
