@@ -455,9 +455,9 @@ def main():
     if args.action is not None:
         red.set(actionP, args.action)
         red.lpush(dummy, 'ignore')
-        if args.read is not None:
-            red.set(readP, args.read)
-
+    if args.read is not None:
+        red.set(readP, args.read)
+        red.lpush(dummy, 'ignore')
 
     if args.list:
         list_queue(red, args.list)
