@@ -48,6 +48,7 @@ class DqTCPHandler(socketserver.StreamRequestHandler):
         # refactor this and dqutils.push_direct()!!!
 
         if r.get(readP) == 'off':
+            logging.error('DQ Read from socket is turned off!')
             return False
 
         if r.llen(aq) > cfg['maxium_queue_size']:

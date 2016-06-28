@@ -33,11 +33,13 @@ msglo = ('Failed to run action "{}" {} times. '
          +' Record={}.')
 
 
-def logheartbeat():
+def logheartbeat(red):
     logname='/var/log/tada/dqpop-heartbeat.log'
+    lenActive = red.llen(aq)
     with open(logname, 'a') as f:
         # log: <time stamp> <free disk space in bytes>
-        print(str(datetime.now()), shutil.disk_usage('/var/tada/').free,
+        freemb = int(shutil.disk_usage('/var/tada/').free / 1E6)
+        print(str(datetime.now()), lenActive, freemb, 'avail-mb',
               file=f)
 
 def process_queue_forever(qname, qcfg, dirs, delay=1.0):
@@ -53,7 +55,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         logging.debug('Read Queue: loop (block for NEXT RECORD each time)')
 
         rid = ru.next_record(red) # BLOCKING
-        logheartbeat()
+        logheartbeat(red)
         if rid == None:
             logging.debug('Read Queue: rid == None. '
                           'Should only happen on toggle of ACTION flag.')

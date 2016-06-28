@@ -162,7 +162,16 @@ def clear_trans(pl, red=None):
     pl.delete(aq, aqs, iq, iqs, rids, ecnt, actionP, readP, dummy)
     pl.set(actionP, 'on')
     pl.set(readP, 'on')
-    
+
+def queue_full(host, actual_qsize, max_qsize):    
+    logging.error(('Queue is full on {}!  Not pushing records.'
+                  + ' Current size ({}) > max ({}).'
+                  + ' Turning off read from socket.'
+                  + ' Disabling push to queue.'
+                  + ' To reenable: "dqcli --read on"')
+                  .format(host, actual_qsize, max_qsize) )
+    r.set(readP, 'off')
+
 ##############################################################################
 
 def push_records(host, port, records, max_qsize):
@@ -175,12 +184,7 @@ def push_records(host, port, records, max_qsize):
     
 
     if r.llen(aq) > max_qsize:
-        logging.error('Queue is full! '
-                      + 'Turning off read from socket. '
-                      + 'Disabling push to queue.  '
-                      + 'To reenable: "dqcli --read on"  '
-                      )
-        r.set(readP, 'off')
+        queue_full(host, r.llen(aq), max_qsize)
         return False
     
     for rec in records:
@@ -225,6 +229,7 @@ def push_direct(redis_host, redis_port, fname, checksum,
                           retry_on_timeout=True )
 
     if r.get(readP) == 'off':
+        logging.error('DQ Read from socket is turned off! Not pushing records.')
         return False
 
     if r.sismember(aqs, checksum) == 1:
@@ -233,12 +238,7 @@ def push_direct(redis_host, redis_port, fname, checksum,
         return False
 
     if r.llen(aq) > max_queue_size:
-        logging.error('Queue is full! '
-                      + 'Turning off read from socket. '
-                      + 'Disabling push to queue.  '
-                      + 'To reenable: "dqcli --read on"  '
-                      )
-        r.set(readP, 'off')
+        queue_full(redis_host, r.llen(aq), max_queue_size)
         return False
     
     rec = dict(filename=fname, checksum=checksum)
