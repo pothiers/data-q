@@ -48,7 +48,7 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
     maxerrors = qcfg['maximum_errors_per_record']
-    logheartbeat()
+    logheartbeat(red)
 
     #! logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
