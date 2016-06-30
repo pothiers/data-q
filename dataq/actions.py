@@ -1,4 +1,3 @@
-
 "Actions that can be run against entry when popped off queue."
 import random
 import logging
@@ -16,4 +15,5 @@ action_lut = dict(
     echo30=echo30, # sample. Not used for production.
     network_move=tada.actions.network_move,
     submit=tada.actions.submit,
-    )
+)
+
