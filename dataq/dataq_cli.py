@@ -131,14 +131,23 @@ def push_queue(redis_host, redis_port, infiles, max_qsize):
             recs.append(dict(filename=fname, checksum=checksum, error_count=count))
     ru.push_records(redis_host, redis_port, recs, max_qsize)
     
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
 def push_files(redis_host, redis_port, filename_list, max_qsize):
     'Push filenames (each with checksum ) onto queue'
     logging.debug('DBG-0: EXECUTING push_files();{}'.format(filename_list))
     recs = list()
     for fname in filename_list:
         try:
-            res = subprocess.check_output('md5sum {}'.format(fname), shell=True)
-            checksum, dum = res.decode().strip().split()
+            #!res =subprocess.check_output('md5sum {}'.format(fname), shell=True)
+            #!checksum, dum = res.decode().strip().split()
+            checksum = md5(fname)
             recs.append(dict(filename=fname, checksum=checksum, error_count=0))  
         except Exception as err:
             logging.error('Could not push file "{}"; {}'.format(fname, err))
