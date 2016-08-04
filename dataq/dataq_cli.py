@@ -448,7 +448,7 @@ def main():
     qcfg, dirs = config.get_config(possible_qnames)
     qname = args.queue
 
-    max_qsize = qcfg['maxium_queue_size']
+    max_qsize = qcfg['maximum_queue_size']
     host = qcfg['dq_host']
     port = qcfg['redis_port']
     red = ru.redis_protocol()

@@ -51,7 +51,7 @@ class DqTCPHandler(socketserver.StreamRequestHandler):
             logging.error('DQ Read from socket is turned off!')
             return False
 
-        if r.llen(aq) > cfg['maxium_queue_size']:
+        if r.llen(aq) > cfg['maximum_queue_size']:
             logging.error('Queue is full! '
                           + 'Turning off read from socket. '
                           + 'Disabling push to queue.  '

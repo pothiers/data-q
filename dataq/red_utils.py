@@ -223,7 +223,7 @@ def push_records(host, port, records, max_qsize):
 def push_direct(redis_host, redis_port, fname, checksum,
                 max_queue_size=5000):
     'Directly push a record to (possibly remote) REDIS'
-
+    
     r = redis.StrictRedis(host=redis_host, port=redis_port,
                           socket_keepalive=True,
                           retry_on_timeout=True )
