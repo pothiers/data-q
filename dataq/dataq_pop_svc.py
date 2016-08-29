@@ -91,12 +91,11 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
             msg = msghi if (error_count > maxerrors) else msglo
             logging.debug(msg.format(action_name, error_count, maxerrors, rec))
 
-            # DBG: the dictionary associated with RID diappeared here.
+            # Dbg: The Dictionary Associated with RID diappeared here.
             ru.set_record(red, rid, rec) #should not be necessary!!!
 
-            logging.error('Error {} running {} action: {}; {}'
-                          .format(error_count, action_name.upper(),
-                                  ex, du.trace_str()))
+            logging.error('Error running {} action. error:{}; trace:{}'
+                          .format(action_name.upper(), ex, du.trace_str()))
             #sys.exit(ex)
 
         # buffer all commands done by pipeline, make command list atomic
