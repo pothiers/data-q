@@ -20,6 +20,7 @@ import shutil
 
 
 from tada import config
+from tada import tada_utils as tut
 from . import dqutils as du
 from . import red_utils as ru
 from .dbvars import *
@@ -35,12 +36,18 @@ msglo = ('Failed to run action "{}" {} times. '
 
 def logheartbeat(red):
     logname='/var/log/tada/dqpop-heartbeat.log'
-    lenActive = red.llen(aq)
-    with open(logname, 'a') as f:
-        # log: <time stamp> <free disk space in bytes>
-        freemb = int(shutil.disk_usage('/var/tada/').free / 1E6)
-        print(str(datetime.now()), lenActive, freemb, 'avail-mb',
-              file=f)
+    try:
+        logheartbeat.counter += 1
+        timestamp = str(datetime.now())
+        logging.debug('dataq-pop heartbeat[{}]: {}'
+                      .format(logheartbeat.counter, timestamp))
+        lenActive = red.llen(aq)
+        with open(logname, 'a') as f:
+            # log: <timestamp> <free disk space in bytes>
+            freemb = int(shutil.disk_usage('/var/tada/').free / 1E6)
+            print(timestamp, lenActive, freemb, 'avail-mb', file=f)
+    except:
+        pass
 
 def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
@@ -48,18 +55,23 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
     action_name = qcfg[qname]['action_name']
     action = action_lut[action_name]
     maxerrors = qcfg['maximum_errors_per_record']
+    logheartbeat.counter = 0
     logheartbeat(red)
+    hiera = tut.read_hiera_yaml()
+    # seconds to wait before unblocking
+    timeout = hiera.get('dq_unblock_timeout', 0) 
 
     #! logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
-        logging.debug('Read Queue: loop (block for NEXT RECORD each time)')
-
-        rid = ru.next_record(red) # BLOCKING
-        logheartbeat(red)
+        logging.debug('Read Queue: loop (blocking for NEXT RECORD or {} secs)'
+                      .format(timeout))
+        rid = ru.next_record(red, timeout=timeout) # BLOCKING
         if rid == None:
             logging.debug('Read Queue: rid == None. '
-                          'Should only happen on toggle of ACTION flag.')
+                          'Should only happen on toggle of ACTION flag'
+                          ' or timeout.')
             continue
+        logheartbeat(red)
 
         rec = ru.get_record(red, rid)
         if len(rec) == 0:
@@ -106,14 +118,15 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
                 if success == False:
                     if error_count > maxerrors:
                         # action kept failing: move to Inactive queue
-                        ru.push_to_inactive(pl, rid)
+                        #! ru.push_to_inactive(pl, rid)
+                        pass
                     else:
                         # failed: go to the end of the line
                         ru.push_to_active(pl, rid)
                 pl.execute() # execute the pipeline
             except Exception as err:
                 success = False
-                ru.push_to_inactive(pl, rid)
+                #!ru.push_to_inactive(pl, rid)
                 logging.error('Unexpected exception; {}; {}'
                               .format(err,du.trace_str()))
                 pl.execute() # execute the pipeline

@@ -61,10 +61,11 @@ def summary(red, qname):
 
     prms = ru.queue_summary(red)
     prms['qname'] = qname
+
+    #! Inactive queue length: %(lenInactive)d
     print('''
 Queue Name:            %(qname)s
 Active queue length:   %(lenActive)d
-Inactive queue length: %(lenInactive)d
 Num records tracked:   %(numRecords)d
 ACTIONS enabled:       %(actionP)s [%(actionPkey)s]
 Socket READ enabled:   %(readP)s [%(readPkey)s]

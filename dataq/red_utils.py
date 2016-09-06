@@ -5,6 +5,7 @@ import redis
 import logging
 
 from .dbvars import *
+from tada import settings
 
 def decode_dict(byte_dict):
     "Convert dict containing bytes as keys and values one containing strings."
@@ -52,7 +53,8 @@ def action_p(red):
 def remove_active(red, rid):
     red.srem(aqs, rid)
 
-def next_record(red):
+def next_record(red, timeout=60):
+    """timeout:: seconds to wait before unblocking (but then start over)"""
     # ALERT: being "clever" here!
     #
     # If actionP was turned on, and the queue isn't being filled,
@@ -62,14 +64,22 @@ def next_record(red):
     # Probably unimportant on long running system, but plays havoc
     # with testing. To resolve, on setting actionP to off, we push
     # to dummy to clear block.
-    (keynameB, ridB) = red.brpop([dummy, aq]) # BLOCKING pop (over key list)
-    if (keynameB.decode() == dummy):
-        rid = None
-        logging.debug('DG next_record got value ({}) on DUMMY channel'.
-                      format(ridB))
-    else:
-        rid =  ridB.decode()
-        red.srem(aqs, rid)
+    #
+    
+    try:
+        #! (keynameB, ridB) = red.brpop([dummy, aq]) # BLOCKING pop (over key list)
+        (keynameB, ridB) = red.brpop([dummy, aq], timeout) # BLOCKING pop (over key list)
+        if (keynameB.decode() == dummy):
+            rid = None
+            logging.debug('DG next_record got value ({}) on DUMMY channel'.
+                          format(ridB))
+        else:
+            rid =  ridB.decode()
+            red.srem(aqs, rid)
+    except:
+        logging.debug('Stopped blocking after timeout ({}) exceeded'
+                      .format(timeout))
+        return None
     return rid
 
 
@@ -220,10 +230,10 @@ def push_records(host, port, records, max_qsize):
         # END: with pipeline
         log_rid(r, checksum, 'end push_records()')
     
-def push_direct(redis_host, redis_port, fname, checksum,
-                max_queue_size=5000):
+def push_direct(redis_host, redis_port, fname, checksum):
     'Directly push a record to (possibly remote) REDIS'
-    
+    max_queue_size = settings.max_queue_size
+
     r = redis.StrictRedis(host=redis_host, port=redis_port,
                           socket_keepalive=True,
                           retry_on_timeout=True )
