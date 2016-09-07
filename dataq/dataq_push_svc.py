@@ -17,7 +17,9 @@ import warnings
 
 import redis
 
-from tada import config
+#from tada import config
+from tada import settings
+
 from . import dqutils
 from .dbvars import *
 
@@ -51,7 +53,7 @@ class DqTCPHandler(socketserver.StreamRequestHandler):
             logging.error('DQ Read from socket is turned off!')
             return False
 
-        if r.llen(aq) > cfg['maximum_queue_size']:
+        if r.llen(aq) > settings.maximum_queue_size:
             logging.error('Queue is full! '
                           + 'Turning off read from socket. '
                           + 'Disabling push to queue.  '
@@ -126,15 +128,13 @@ def main():
     logging.debug('Debug output is enabled!')
     ######################################################################
 
-    qcfg, dirs = config.get_config(possible_qnames)
+    #qcfg, dirs = config.get_config(possible_qnames)
 
     dqutils.save_pid(sys.argv[0], piddir=dirs['run_dir'])
 
-    dq_host = qcfg['dq_host']
-    dq_port = qcfg['dq_port']
-    serveraddr = (dq_host, dq_port)
+    serveraddr = (settings.dq_host, settings.dq_port)
     logging.debug('Queue "{}" read data from {}:{} and push to REDIS'
-                  .format(args.queue, dq_host, dq_port))
+                  .format(args.queue, settings.dq_host, settings.dq_port))
     server = socketserver.TCPServer(serveraddr, DqTCPHandler)
     server.handle_error = dq_handle_error
     server.r = redis.StrictRedis()

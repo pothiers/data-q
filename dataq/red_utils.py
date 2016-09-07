@@ -173,13 +173,13 @@ def clear_trans(pl, red=None):
     pl.set(actionP, 'on')
     pl.set(readP, 'on')
 
-def queue_full(host, actual_qsize, max_qsize):    
+def queue_full(host, actual_qsize):    
     logging.error(('Queue is full on {}!  Not pushing records.'
                   + ' Current size ({}) > max ({}).'
                   + ' Turning off read from socket.'
                   + ' Disabling push to queue.'
                   + ' To reenable: "dqcli --read on"')
-                  .format(host, actual_qsize, max_qsize) )
+                  .format(host, actual_qsize, settings.maximum_queue_size) )
     r.set(readP, 'off')
 
 ##############################################################################
@@ -193,8 +193,8 @@ def push_records(host, port, records, max_qsize):
         return False
     
 
-    if r.llen(aq) > max_qsize:
-        queue_full(host, r.llen(aq), max_qsize)
+    if r.llen(aq) > settings.maximum_queue_size:
+        queue_full(host, r.llen(aq))
         return False
     
     for rec in records:
@@ -232,7 +232,6 @@ def push_records(host, port, records, max_qsize):
     
 def push_direct(redis_host, redis_port, fname, checksum):
     'Directly push a record to (possibly remote) REDIS'
-    max_queue_size = settings.max_queue_size
 
     r = redis.StrictRedis(host=redis_host, port=redis_port,
                           socket_keepalive=True,
@@ -247,8 +246,8 @@ def push_direct(redis_host, redis_port, fname, checksum):
                         .format(checksum))
         return False
 
-    if r.llen(aq) > max_queue_size:
-        queue_full(redis_host, r.llen(aq), max_queue_size)
+    if r.llen(aq) > settings.maximum_queue_size:
+        queue_full(redis_host, r.llen(aq))
         return False
     
     rec = dict(filename=fname, checksum=checksum)

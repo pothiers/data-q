@@ -19,7 +19,8 @@ from datetime import datetime
 import shutil
 
 
-from tada import config
+#from tada import config
+from tada import settings
 from tada import tada_utils as tut
 from . import dqutils as du
 from . import red_utils as ru
@@ -49,17 +50,17 @@ def logheartbeat(red):
     except:
         pass
 
-def process_queue_forever(qname, qcfg, dirs, delay=1.0):
+def process_queue_forever(qname, delay=1.0):
     'Block waiting for items on queue, then process, repeat.'
     red = ru.redis_protocol()
-    action_name = qcfg[qname]['action_name']
+    action_name = settings.tada[qname]['action_name']
     action = action_lut[action_name]
-    maxerrors = qcfg['maximum_errors_per_record']
+    maxerrors = settings.tada['maximum_errors_per_record']
     logheartbeat.counter = 0
     logheartbeat(red)
-    hiera = tut.read_hiera_yaml()
+    #hiera = tut.read_hiera_yaml()
     # seconds to wait before unblocking
-    timeout = hiera.get('dq_unblock_timeout', 0) 
+    timeout = settings.dq_unblock_timeout
 
     #! logging.debug('Read Queue "{}"'.format(qname))
     while True: # pop from queue forever
@@ -82,15 +83,13 @@ def process_queue_forever(qname, qcfg, dirs, delay=1.0):
         success = True
         try:
             logging.debug('RUN action: {}'.format(action_name))
-            result = action(rec, qname, qcfg=qcfg, dirs=dirs)
+            result = action(rec, qname)
             success = result
             if success == False:
                 error_count += 1
                 ru.incr_error_count(red, rid)
             logging.debug('Action passed: "{}"({}) => {}'
-                          .format(action_name,
-                                  rec.get('filename','NA'),
-                                  result))
+                          .format(action_name, rec['filename'], result))
         except Exception as ex:
             # action failed
             success = False
@@ -186,13 +185,17 @@ def main():
 
     ###########################################################################
 
-    qcfg, dirs = config.get_config(possible_qnames)
+    #!qcfg, dirs = config.get_config(possible_qnames)
     logging.info('logDict={}'.format(logDict))
     logging.info('DATAQ started: {}'.format(datetime.now().isoformat()))
-    logging.info('Tada-Config content({}): {}'.format(args.queue, qcfg))
-
+    #logging.info('Tada-Config content({}): {}'.format(args.queue, qcfg))
+    logging.info('TADA settings({}): {}'
+                 .format(args.queue,
+                         dict([(v,getattr(settings,v))
+                               for v in dir(settings) if not v.startswith("_")])
+                         ))
     du.save_pid(sys.argv[0], piddir='/var/run/tada')
-    process_queue_forever(args.queue, qcfg, dirs)
+    process_queue_forever(args.queue)
 
 if __name__ == '__main__':
     main()

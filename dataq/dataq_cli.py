@@ -17,6 +17,8 @@ import subprocess
 from functools import partial
 
 from tada import config
+from tada import settings
+
 from . import dqutils
 from . import red_utils as ru
 from .dbvars import *
@@ -123,14 +125,14 @@ def dump_queue(red, outfile):
 
 
 
-def push_queue(redis_host, redis_port, infiles, max_qsize):
+def push_queue(redis_host, redis_port, infiles):
     recs = list()
     with fileinput.input(files=infiles) as infile:
         for line in infile:
             (checksum, fname, *others) = line.strip().split()
             count = 0 if len(others) == 0 else int(others[0])
             recs.append(dict(filename=fname, checksum=checksum, error_count=count))
-    ru.push_records(redis_host, redis_port, recs, max_qsize)
+    ru.push_records(redis_host, redis_port, recs, settings.maximum_queue_size)
     
 def md5(fname):
     hash_md5 = hashlib.md5()
@@ -140,7 +142,7 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def push_files(redis_host, redis_port, filename_list, max_qsize):
+def push_files(redis_host, redis_port, filename_list):
     'Push filenames (each with checksum ) onto queue'
     logging.debug('DBG-0: EXECUTING push_files();{}'.format(filename_list))
     recs = list()
@@ -153,7 +155,7 @@ def push_files(redis_host, redis_port, filename_list, max_qsize):
         except Exception as err:
             logging.error('Could not push file "{}"; {}'.format(fname, err))
             continue
-    ru.push_records(redis_host, redis_port, recs, max_qsize)
+    ru.push_records(redis_host, redis_port, recs, settings.maximum_queue_size)
 
 def push_string(red, line):
     'Push record (string) containing: "checksum filename"'
@@ -449,7 +451,6 @@ def main():
     qcfg, dirs = config.get_config(possible_qnames)
     qname = args.queue
 
-    max_qsize = qcfg['maximum_queue_size']
     host = qcfg['dq_host']
     port = qcfg['redis_port']
     red = ru.redis_protocol()
@@ -479,9 +480,9 @@ def main():
         dump_queue(red, args.dump)
 
     if args.push:
-        push_queue(host, port, args.push, max_qsize)
+        push_queue(host, port, args.push)
     if args.pushfile:
-        push_files(host, port, args.pushfile, max_qsize)
+        push_files(host, port, args.pushfile)
     if args.pushstr:
         push_string(red, args.pushstr)
         
