@@ -187,7 +187,7 @@ def main():
 
     #!qcfg, dirs = config.get_config(possible_qnames)
     logging.info('logDict={}'.format(logDict))
-    logging.info('DATAQ started: {}'.format(datetime.now().isoformat()))
+    logging.info('# DATAQ started: {}'.format(datetime.now().isoformat()))
     #logging.info('Tada-Config content({}): {}'.format(args.queue, qcfg))
     logging.info('TADA settings({}): {}'
                  .format(args.queue,
