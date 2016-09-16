@@ -21,7 +21,7 @@ import shutil
 
 #from tada import config
 from tada import settings
-from tada import tada_utils as tut
+from tada import utils as tut
 from . import dqutils as du
 from . import red_utils as ru
 from .dbvars import *
