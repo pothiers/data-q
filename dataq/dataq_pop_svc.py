@@ -142,7 +142,7 @@ def process_queue_forever(qname, delay=1.0):
             logging.debug(msg.format(action_name,
                                      rid,
                                      rec.get('filename','NA'),
-                                     result))
+                                     success))
         #!ru.log_queue_summary(red)
         #!ru.log_queue_record(red, rid, msg='success={} '.format(success))
     # END while true
