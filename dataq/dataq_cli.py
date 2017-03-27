@@ -135,6 +135,7 @@ def push_queue(redis_host, redis_port, infiles):
     ru.push_records(redis_host, redis_port, recs, settings.maximum_queue_size)
     
 def md5(fname):
+    import hashlib
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):

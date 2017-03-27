@@ -83,13 +83,19 @@ def process_queue_forever(qname, delay=1.0):
         success = True
         try:
             logging.debug('RUN action: {}'.format(action_name))
-            result = action(rec, qname)
-            success = result
+            success = action(rec, qname)
             if success == False:
                 error_count += 1
                 ru.incr_error_count(red, rid)
-            logging.debug('Action passed: "{}"({}) => {}'
-                          .format(action_name, rec['filename'], result))
+                logging.debug('Action FAILED({}): "{}"({}) => {}'
+                              .format(error_count,
+                                      action_name,
+                                      rec['filename'],
+                                      success))
+
+            else:
+                logging.debug('Action passed: "{}"({}) => {}'
+                              .format(action_name, rec['filename'], success))
         except Exception as ex:
             # action failed
             success = False
@@ -130,7 +136,7 @@ def process_queue_forever(qname, delay=1.0):
                               .format(err,du.trace_str()))
                 pl.execute() # execute the pipeline
         # END with pipeline
-        if success:
+        if success == True:
             ru.remove_record(red, rid)  # We are done with rid, remove it
             msg = ('Action "{}" ran successfully against ({}): {} => {}')
             logging.debug(msg.format(action_name,
