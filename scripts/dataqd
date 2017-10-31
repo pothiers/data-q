@@ -47,7 +47,8 @@ start() {
 stop() {
     echo -n $"Stopping $prog: "
     # stop it here, often "killproc $prog"
-    killproc $prog
+    #!killproc $prog
+    pkill `basename $exec`  # 
     retval=$?
     echo
     [ $retval -eq 0 ] && rm -f $lockfile
