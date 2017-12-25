@@ -71,6 +71,7 @@ def process_queue_forever(qname, delay=1.0):
             logging.debug('Read Queue: rid == None. '
                           'Should only happen on toggle of ACTION flag'
                           ' or timeout.')
+            logheartbeat(red)
             continue
         logheartbeat(red)
 
